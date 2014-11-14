@@ -53,7 +53,7 @@ class processedTrace: public trace
 }; // class processedTrace
 
 
-
+#if 0
 // Interface implemented by objects that listen for observations a traceStream reads. traceObservers may be arranged
 // as arbitrary graphs of filters, consuming observations from some traceStreams or traceObservers and forwarding 
 // the same or other observations (e.g. the sum of multiple observations) to other traceObservers. For simplicity
@@ -180,10 +180,12 @@ class traceObserverQueue: public traceObserver {
   // This method is optional.
   void obsFinished();
 }; // traceObserverQueue
+#endif
+
 
 // This is a trace observer that processes incoming observations by writing them into a file, running some
 // application on this file and emitting the observations produced by the application.
-class externalTraceProcessor_File : public traceObserver {
+class externalTraceProcessor_File : public common::traceObserver {
   // Path of the executable that will be executed on the observations
   std::string processorFName;
   
@@ -211,7 +213,7 @@ class externalTraceProcessor_File : public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, int>&      obsAnchor);
   
   // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
   // This method is optional.
@@ -220,7 +222,7 @@ class externalTraceProcessor_File : public traceObserver {
 
 // This is a trace observer that processes incoming observations by writing them into the given file in
 // tab-separated format
-class traceFileWriterTSV : public traceObserver {
+class traceFileWriterTSV : public common::traceObserver {
   // The keys of the context and trace observations. All observations must have identical keys.
   std::set<std::string> ctxtKeys;
   std::set<std::string> traceKeys;
@@ -240,14 +242,14 @@ class traceFileWriterTSV : public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, int>&      obsAnchor);
   
   // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
   // This method is optional.
   void obsFinished();
 }; // class traceFileWriterTSV
 
-class traceStream: public attrObserver, public common::trace, public traceObserver
+class traceStream: public attrObserver, public common::trace, public common::traceObserver
 {
   public:
   typedef common::easylist<std::string> attrNames;
@@ -345,7 +347,7 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   void observe(int traceID, 
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor/*,
+               const std::map<std::string, int>&      obsAnchor/*,
                const std::set<traceObserver*>&           observers*/);
     
   // Given a traceID returns a pointer to the corresponding trace object
@@ -360,7 +362,7 @@ class processedTraceStream: public traceStream
   static int maxFileID;
   
   // The queue of externalTraceProcessors that filter this traceStream
-  traceObserverQueue* queue;
+  common::traceObserverQueue* queue;
   
   // Pointers to the actual externalTraceProcessors objects in the queue
   std::list<externalTraceProcessor_File*> commandProcessors;

@@ -166,6 +166,7 @@ typedef std::list<std::pair<int, std::list<int> > > location;
 //     the destination has already been loaded in the data structure, we go directly there. If the destination has not
 //     been loaded, this means that the application generating the debug log has crashed and thus, we shouldn't follow
 //     the link.
+//
 class anchor
 {
   protected:
@@ -245,6 +246,7 @@ class anchor
     
   std::string str(std::string indent="") const;
 }; // class anchor
+
 
 /*****************
  ***** block *****

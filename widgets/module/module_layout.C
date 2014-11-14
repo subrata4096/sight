@@ -858,7 +858,7 @@ module::~module() {
 void module::observe(int traceID,
                      const map<string, string>& ctxt, 
                      const map<string, string>& obs,
-                     const map<string, anchor>& obsAnchor) {
+                     const map<string, int>& obsAnchor) {
   /*cout << "module::observe("<<traceID<<") moduleID="<<moduleID<<" #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
@@ -1189,7 +1189,7 @@ map<string, /*double*/string> polyFitFilter::getNumericAttrs(
 void polyFitFilter::observe(int traceID,
                             const std::map<std::string, std::string>& ctxt, 
                             const std::map<std::string, std::string>& obs,
-                            const std::map<std::string, anchor>&      obsAnchor) {
+                            const std::map<std::string, int>&      obsAnchor) {
   /*cout << "polyFitFilter::observe() this="<<this<<endl;
   cout << "ctxt="<<endl<<data2str(ctxt)<<endl;
   cout << "obs="<<endl<<data2str(obs)<<endl;*/
@@ -1292,13 +1292,13 @@ void polyFitFilter::obsFinished() {
   
   // Set of all the externalTraceProcessor that will listen to this module's observations
   // and run them through funcFit
-  set<traceObserver*> outProcessors;
+  set<common::traceObserver*> outProcessors;
   
   // For each numeric trace attribute, write to its file the observation's entire numeric 
   // context and the value of this attribute.
   for(set<string>::iterator t=numericTraceNames.begin(); t!=numericTraceNames.end(); t++) {
     //cout << "Trace attribute "<<*t<<endl;
-    traceObserver* out = 
+	  common::traceObserver* out = 
             new externalTraceProcessor_File(string(ROOT_PATH)+"/widgets/funcFit/funcFit", 
                                             easylist<string>(txt()<<workDir<<"/in"<<fileNum<<".cfg"),
                                             txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".data",
@@ -1337,7 +1337,7 @@ void polyFitFilter::obsFinished() {
       numTraceVal[*t] = (*dt)[*t];
       
       // An empty anchors map
-      std::map<std::string, anchor> numTraceAnchor;
+      std::map<std::string, int> numTraceAnchor;
       
       // Pass the observation
       out->observe(-1, *dc, numTraceVal, numTraceAnchor);
@@ -1406,7 +1406,7 @@ void polyFitFilter::obsFinished() {
   }
 
   // Finish the external processors to run funcFit and forward the results to downstream observers
-  for(set<traceObserver*>::iterator f=outProcessors.begin(); f!=outProcessors.end(); f++) {
+  for(set<common::traceObserver*>::iterator f=outProcessors.begin(); f!=outProcessors.end(); f++) {
     (*f)->obsFinished();
     delete *f;
   }
@@ -1421,7 +1421,7 @@ void polyFitFilter::obsFinished() {
 void polyFitObserver::observe(int traceID,
                      const map<string, string>& ctxt, 
                      const map<string, string>& obs,
-                     const map<string, anchor>& obsAnchor) {
+                     const map<string, int>& obsAnchor) {
   /*cout << "polyFitObserver::observe("<<traceID<<") #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
@@ -1505,7 +1505,7 @@ std::string polyFitObserver::getFitText() const
  ***** moduleTraceStream *****
  *****************************/
 
-moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* observer) : 
+moduleTraceStream::moduleTraceStream(properties::iterator props, common::traceObserver* observer) : 
   traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "moduleID"), false)
 {
   assert(props.name() == "moduleTS");
@@ -1616,7 +1616,7 @@ void *moduleTraceStream::enterTraceStream(properties::iterator props) {
  ***** compModuleTraceStream *****
  *********************************/
 
-compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceObserver* observer) :
+compModuleTraceStream::compModuleTraceStream(properties::iterator props, common::traceObserver* observer) :
   moduleTraceStream(props.next(), this)
 {
   /*cout << "compModuleTraceStream::compModuleTraceStream() traceID="<<getID()<<", observer="<<observer<<endl;
@@ -1889,7 +1889,7 @@ map<string, string> remKey(const map<string, string>& m, std::string key) {
 void compModule::observe(int traceID,
                          const map<string, string>& ctxt, 
                          const map<string, string>& obs,
-                         const map<string, anchor>& obsAnchor) {
+                         const map<string, int>& obsAnchor) {
   /*cout << "compModule::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
@@ -1977,7 +1977,7 @@ void compModule::observe(int traceID,
         map<string, string> obsRelation  = compareObservations(*o, referenceObs[inputCtxt]);
                 
         // Call the observe method of the parent class 
-        emitObservation(traceID, ctxtRelation, obsRelation, map<string, anchor>());
+        emitObservation(traceID, ctxtRelation, obsRelation, map<string, int>());
       }
     }
   // If this is a non-reference observation
@@ -2007,7 +2007,7 @@ std::string processedModuleTraceStream::workDir;
 // The maximum unique ID assigned to any file that was used as input to a processor
 int processedModuleTraceStream::maxFileID;
 
-processedModuleTraceStream::processedModuleTraceStream(properties::iterator props, traceObserver* observer) :
+processedModuleTraceStream::processedModuleTraceStream(properties::iterator props, common::traceObserver* observer) :
   moduleTraceStream(props.next(), this)
 {
   // Initialize the directories this processedTraceStream will use for its temporary storage
@@ -2022,7 +2022,7 @@ processedModuleTraceStream::processedModuleTraceStream(properties::iterator prop
   // If no observer is specified, register a filtering queue containing a processModule, followed by the the current instance of 
   // modularApp to listen in on observations recorded by this traceStream.
   if(observer==NULL) {
-    filterQueue = new traceObserverQueue();
+    filterQueue = new common::traceObserverQueue();
   
     //cout << "<<< processedModuleTraceStream::processedModuleTraceStream"<<endl;
     // Add this trace object as a change listener to all the context variables
@@ -2094,7 +2094,7 @@ SynopticModuleObsLogger::SynopticModuleObsLogger(std::string outFName) : outFNam
 void SynopticModuleObsLogger::observe(int traceID,
              const std::map<std::string, std::string>& ctxt, 
              const std::map<std::string, std::string>& obs,
-             const std::map<std::string, anchor>&      obsAnchor) {
+             const std::map<std::string, int>&      obsAnchor) {
   assert(traceID2Label.find(traceID) != traceID2Label.end());
   escapedStr esLabel(traceID2Label[traceID], "\"", escapedStr::unescaped);
   

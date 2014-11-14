@@ -1075,6 +1075,7 @@ module::~module() {
   for(list<pair<string, attrValue> >::iterator tc=obs.begin(); tc!=obs.end(); tc++)
     cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
 
+    //Subrata: following is important
     // Record the observation into this module group's trace
     modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 

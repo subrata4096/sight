@@ -47,7 +47,7 @@ class moduleInfo {
 
 // Records the information of a given module when the module is entered so that we have it available 
 // when the module is exited
-class module : public common::module, public traceObserver {
+class module : public common::module, public common::traceObserver {
   friend class modularApp;
   // Maps each moduleID to the data needed to compute a polynomial approximation of the relationship
   // between its input context and its observations
@@ -103,12 +103,12 @@ class module : public common::module, public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor/*,
+               const std::map<std::string, int>&      obsAnchor/*,
                const std::set<traceObserver*>&           observers*/);
 }; // class module
 
 // Observation filter that finds a polynomial fit of the numeric features of the observed data
-class polyFitFilter : public traceObserver {
+class polyFitFilter : public common::traceObserver {
   private:
   // The total number of polyFitFilter instances that have been created so far. 
   // Used to set unique names to files output by polyFitFilters.
@@ -178,7 +178,7 @@ class polyFitFilter : public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, int>&      obsAnchor);
 
   // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
   // This method is optional.
@@ -187,7 +187,7 @@ class polyFitFilter : public traceObserver {
 
 // Class that observes the polynomial fits that are produced by polyFitFilter. modularApp reads these fits
 // from this object.
-class polyFitObserver: public traceObserver
+class polyFitObserver: public common::traceObserver
 {
   // Maps the names of each trace attribute for which a fit was computed to the list of terms
   // in this fit
@@ -199,7 +199,7 @@ class polyFitObserver: public traceObserver
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, int>&      obsAnchor);
   
   // Returns the number of trace attributes for which fits were computed
   int numFits() const { return fits.size(); }
@@ -397,7 +397,7 @@ class moduleTraceStream: public traceStream
   //traceObserverQueue* queue;
   
   public:
-  moduleTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  moduleTraceStream(properties::iterator props, common::traceObserver* observer=NULL);
   ~moduleTraceStream();
   
   // Called when we observe the entry tag of a moduleTraceStream
@@ -408,7 +408,7 @@ class moduleTraceStream: public traceStream
 // the same values for the subset of context attributes that are not in the set options to a single one reference 
 // observation (one reference for each value of non-option attributes) and emits these comparisons to the 
 // traceObservers that listen to it.
-class compModule : public common::module, public traceObserver {
+class compModule : public common::module, public common::traceObserver {
   friend class compModuleTraceStream;
   // Records whether this is the reference configuration of the module
   //bool isReference;
@@ -461,7 +461,7 @@ class compModule : public common::module, public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, int>&      obsAnchor);
 }; // class compModule
 
 // Specialization of traceStreams for the case where they are hosted by a compModule 
@@ -474,7 +474,7 @@ class compModuleTraceStream: public moduleTraceStream
   //module* mFilter;
   
   public:
-  compModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  compModuleTraceStream(properties::iterator props, common::traceObserver* observer=NULL);
   ~compModuleTraceStream();
   
   // Called when we observe the entry tag of a compModuleTraceStream
@@ -492,10 +492,10 @@ class processedModuleTraceStream: public moduleTraceStream
   // Pointers to the actual externalTraceProcessors objects in the queue
   std::list<externalTraceProcessor_File*> commandProcessors;
   
-  traceObserverQueue* filterQueue;
+  common::traceObserverQueue* filterQueue;
   
   public:
-  processedModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  processedModuleTraceStream(properties::iterator props, common::traceObserver* observer=NULL);
   ~processedModuleTraceStream();
   
   // Called when we observe the entry tag of a processedModuleTraceStream
@@ -506,7 +506,7 @@ class processedModuleTraceStream: public moduleTraceStream
 // Synoptic format, writing for each module observation two lines, one with the entry timestamp
 // and one with the exit timestamp. SynopticModuleObsLogger requires the use of timeStampMeasures.
 // Only records with such timestamps are emitted into the log.
-class SynopticModuleObsLogger: public traceObserver {
+class SynopticModuleObsLogger: public common::traceObserver {
   // Map the IDs of the traces this logger is observing to their string labels
   std::map<int, std::string> traceID2Label;
   
@@ -531,7 +531,7 @@ class SynopticModuleObsLogger: public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, int>&      obsAnchor);
   
   // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
   // This method is optional.

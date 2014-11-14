@@ -81,6 +81,7 @@ void *processedTrace::enterProcessedTraceStream(properties::iterator props) {
   return NULL;
 }
 
+#if 0
 /*************************
  ***** traceObserver *****
  *************************/
@@ -121,7 +122,7 @@ void traceObserver::notifyObsFinish() {
 void traceObserver::emitObservation(int traceID, 
                                     const std::map<std::string, std::string>& ctxt, 
                                     const std::map<std::string, std::string>& obs,
-                                    const std::map<std::string, anchor>&      obsAnchor) {
+                                    const std::map<std::string, int>&      obsAnchor) {
   //cout << "traceObserve::emitObservation("<<traceID<<") this="<<this<<", #observers="<<observers.size()<<"=";
   for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++) {
     //cout << o->first << " ";
@@ -301,7 +302,7 @@ void traceObserverQueue::unregisterObserver(traceObserver* obs) {
 void traceObserverQueue::observe(int traceID, 
                                  const std::map<std::string, std::string>& ctxt, 
                                  const std::map<std::string, std::string>& obs,
-                                 const std::map<std::string, anchor>&      obsAnchor) {
+                                 const std::map<std::string, int>&      obsAnchor) {
   if(firstO!=NULL)
     // Forward the observation to the first traceObserver in the queue and let it forward it to its
     // successors in the queue as it needs to.
@@ -352,6 +353,8 @@ void traceObserverQueue::obsFinished() {
     firstO->obsFinished();
 }
 
+#endif
+
 /***************************************
  ***** externalTraceProcessor_File *****
  ***************************************/
@@ -380,7 +383,7 @@ externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFN
 void externalTraceProcessor_File::observe(int traceID,
              const std::map<std::string, std::string>& ctxt, 
              const std::map<std::string, std::string>& obs,
-             const std::map<std::string, anchor>&      obsAnchor) {
+             const std::map<std::string, int>&      obsAnchor) {
 
   //cout << "externalTraceProcessor_File::observe("<<traceID<<")"<<endl;
   // Serialize the current observation into the trace file
@@ -396,9 +399,10 @@ void externalTraceProcessor_File::observe(int traceID,
     traceFile << "obs:"<<key.escape()<<":"<<val.escape()<<" ";
   }
 
-  for(std::map<std::string, anchor>::const_iterator a=obsAnchor.begin(); a!=obsAnchor.end(); a++) {
+  for(std::map<std::string, int>::const_iterator a=obsAnchor.begin(); a!=obsAnchor.end(); a++) {
     sight::common::escapedStr key(a->first,  " :", sight::common::escapedStr::unescaped);
-    traceFile << "anchor:"<<key.escape()<<":"<<a->second.getID()<<" ";
+    traceFile << "anchor:"<<key.escape()<<":"<<a->second<<" ";
+    //traceFile << "anchor:"<<key.escape()<<":"<<a->second.getID()<<" ";
   }
 
   traceFile << endl;
@@ -442,7 +446,8 @@ void externalTraceProcessor_File::obsFinished() {
     vector<string> terms = es.unescapeSplit(" ");
 
     map<string, string> ctxt, obs;
-    map<string, anchor> obsAnchor;
+    map<string, int> obsAnchor;
+    //map<string, anchor> obsAnchor;
 
     // Iterate over each term of this observation, adding each one into this observation's context, trace observation or anchors
     for(vector<string>::iterator t=terms.begin(); t!=terms.end(); t++) {
@@ -459,7 +464,8 @@ void externalTraceProcessor_File::obsFinished() {
       // Identify the type of this term
       if(type == "ctxt") ctxt[key] = val;
       else if(type=="obs") obs[key] = val;
-      else obsAnchor[key] = anchor(attrValue::parseInt(val));
+      else obsAnchor[key] = attrValue::parseInt(val);
+      //else obsAnchor[key] = anchor(attrValue::parseInt(val));
     }
     
     // Emit the observation
@@ -499,7 +505,7 @@ traceFileWriterTSV::traceFileWriterTSV(std::string outFName) {
 void traceFileWriterTSV::observe(int traceID,
              const std::map<std::string, std::string>& ctxt, 
              const std::map<std::string, std::string>& obs,
-             const std::map<std::string, anchor>&      obsAnchor) {
+             const std::map<std::string, int>&      obsAnchor) {
   /*cout << "traceFileWriterTSV::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
@@ -789,14 +795,16 @@ void* traceStream::observe(properties::iterator props)
   
   // Maps that record the observation to be forwarded to any observers listening on this traceStream
   map<string, string> ctxtToObs, traceToObs;
-  map<std::string, anchor> traceAnchorToObs;
+  //map<std::string, anchor> traceAnchorToObs;
+  map<std::string, int> traceAnchorToObs;
 
   // If some observers are listening on this traceStream, record the current observation so they can look at it
   if(ts->numObservers()>0) {
     for(long i=0; i<numTraceAttrs; i++) {
       string tKey = properties::get(props, txt()<<"tKey_"<<i);
       traceToObs[tKey] = properties::get(props, txt()<<"tVal_"<<i);
-      traceAnchorToObs[tKey] = anchor(properties::getInt(props, txt()<<"tAnchorID_"<<i));
+      traceAnchorToObs[tKey] = properties::getInt(props, txt()<<"tAnchorID_"<<i);
+      //traceAnchorToObs[tKey] = anchor(properties::getInt(props, txt()<<"tAnchorID_"<<i));
     }
     for(long i=0; i<numCtxtAttrs; i++)
       ctxtToObs[properties::get(props, txt()<<"cKey_"<<i)] = properties::get(props, txt()<<"cVal_"<<i);
@@ -819,7 +827,7 @@ void* traceStream::observe(properties::iterator props)
 void traceStream::observe(int fromTraceID,
                           const map<string, string>& ctxt, 
                           const map<string, string>& obs,
-                          const map<string, anchor>& obsAnchor)
+                          const map<string, int>& obsAnchor)
 {
   //cout << "traceStream::observe("<<fromTraceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<", #obs="<<obs.size()<<endl;
   
@@ -889,12 +897,13 @@ void traceStream::observe(int fromTraceID,
   // Emit the observed anchors of tracer attributes
   //for(long i=0; i<numTraceAttrs; i++) {
   { int i=0;
-  for(map<string, anchor>::const_iterator o=obsAnchor.begin(); o!=obsAnchor.end(); o++, i++) {
+  for(map<string, int>::const_iterator o=obsAnchor.begin(); o!=obsAnchor.end(); o++, i++) {
     if(i!=0) cmd << ", ";
     //string tKey = properties::get(props, txt()<<"tKey_"<<i);
     //anchor tAnchor(properties::getInt(props, txt()<<"tAnchorID_"<<i));
     //cmd << "\""<< tKey << "\": \"" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"\"";
-    cmd << "\""<< o->first << "\": \"" << (o->second==anchor::noAnchor? "": o->second.getLinkJS()) <<"\"";
+    cmd << "\""<< o->first << "\": \"" << "" /*(o->second==anchor::noAnchor? "": o->second.getLinkJS())*/ <<"\"";
+    //cmd << "\""<< o->first << "\": \"" << (o->second==anchor::noAnchor? "": o->second.getLinkJS()) <<"\"";
       
     // If some observers are listening on this traceStream, record the current observation so they can look at it
     //if(ts->numObservers()>0) obsAnchor[tKey] = tAnchor;
@@ -954,7 +963,7 @@ processedTraceStream::processedTraceStream(properties::iterator props, std::stri
     maxFileID = 0;
   }
   
-  queue = new traceObserverQueue();
+  queue = new common::traceObserverQueue();
   
   // Add this trace object as a change listener to all the context variables
   long numCmds = properties::getInt(props, "numCmds");
