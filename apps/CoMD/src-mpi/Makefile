@@ -16,6 +16,7 @@ DO_MPI = ON
 ### own.  If you need any -L or -l switches to get C standard libraries
 ### (such as -lm for the math library) put them in C_LIB.
 #CCC := mpi${CCC}
+MPICCC = mpicc
 CFLAGS = -I../../.. ${SIGHT_CFLAGS}
 OPTFLAGS = -g -O3
 INCLUDES = 

@@ -19,10 +19,11 @@ compNamedMeasures getMeasures() {
 #else // not COMP
 namedMeasures getMeasures() {
    return namedMeasures(
-#ifdef RAPL
-                              "RAPL", new RAPLMeasure()
-#else
                               "time", new timeMeasure()
+			     // , "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS,PAPI_FP_OPS,PAPI_BR_CN,PAPI_BR_MSP,PAPI_L2_TC_MR,PAPI_L1_TCM,PAPI_L2_TCM, PAPI_L3_TCM))
+			      , "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS,PAPI_FP_OPS,PAPI_BR_CN))
+#ifdef RAPL
+                              , "RAPL", new RAPLMeasure()
 #endif
 #endif
                              );
@@ -336,9 +337,9 @@ context
                       "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
                       "FOM",          (double)(1000.0/grindTime2), noComp());
 #else
-   return context("MaxAbsDiff",   (double)MaxAbsDiff,          noComp(),
-                  "TotalAbsDiff", (double)TotalAbsDiff,        noComp(),
-                  "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
-                  "FOM",          (double)(1000.0/grindTime2), noComp());
+   return context("MaxAbsDiff",   (double)MaxAbsDiff,          /* noComp(),*/
+                  "TotalAbsDiff", (double)TotalAbsDiff,        /* noComp(),*/
+                  "MaxRelDiff",   (double)MaxRelDiff,          /* noComp(),*/
+                  "FOM",          (double)(1000.0/grindTime2) /* ,noComp()*/ );
 #endif
 }

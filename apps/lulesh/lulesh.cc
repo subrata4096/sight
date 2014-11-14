@@ -194,7 +194,8 @@ void Release(T **ptr)
 static inline
 void TimeIncrement(Domain& domain, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*   sightModule mod(instance("TimeIncrement", 2, 0),
+   sightModule mod(instance("TimeIncrement", 0, 0),
+		   /*
                    inputs(port(runCfg),
                           port(tsCfg)),
 #if defined(COMP)
@@ -202,7 +203,8 @@ void TimeIncrement(Domain& domain, context& runCfg, context& tsCfg, context& run
 #elif defined(KULFI)
                    runOpts,
 #endif
-                   getMeasures());*/
+                  */
+                   getMeasures());
 
    Real_t targetdt = domain.stoptime() - domain.time() ;
 
@@ -1148,6 +1150,9 @@ static inline void CalcForceForNodes(Domain& domain)
 {
   Index_t numNode = domain.numNode() ;
 
+    sightModule mod(instance("CalcQForElems", 0, 0),getMeasures());
+
+
 #if USE_MPI  
   CommRecv(domain, MSG_COMM_SBN, 3,
            domain.sizeX() + 1, domain.sizeY() + 1, domain.sizeZ() + 1,
@@ -1266,7 +1271,8 @@ void CalcPositionForNodes(Domain &domain, const Real_t dt, Index_t numNode)
 static inline
 void LagrangeNodal(Domain& domain, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*  sightModule mod(instance("LagrangeNodal", 2, 0),
+  sightModule mod(instance("LagrangeNodal", 0, 0),
+		  /*
                   inputs(port(runCfg),
                          port(tsCfg)),
 #if defined(COMP)
@@ -1274,7 +1280,8 @@ void LagrangeNodal(Domain& domain, context& runCfg, context& tsCfg, context& run
 #elif defined(KULFI)
                    runOpts,
 #endif
-                  getMeasures());*/
+                  */
+                  getMeasures());
 
 #ifdef SEDOV_SYNC_POS_VEL_EARLY
    Domain_member fieldData[6] ;
@@ -1559,6 +1566,8 @@ void CalcKinematicsForElems( Domain &domain, Real_t *vnew,
                              Real_t deltaTime, Index_t numElem )
 {
 
+  sightModule mod(instance("CalcKinematicsForElems", 0, 0),getMeasures()); 
+
   // loop over all elements
 #pragma omp parallel for firstprivate(numElem, deltaTime)
   for( Index_t k=0 ; k<numElem ; ++k )
@@ -1626,6 +1635,8 @@ static inline
 void CalcLagrangeElements(Domain& domain, Real_t* vnew)
 {
    Index_t numElem = domain.numElem() ;
+     sightModule mod(instance("CalcLagrangeElements", 0, 0),getMeasures());
+
    if (numElem > 0) {
       const Real_t deltatime = domain.deltatime() ;
 
@@ -2003,8 +2014,10 @@ void CalcQForElems(Domain& domain, Real_t vnew[])
    //
    // MONOTONIC Q option
    //
+    Index_t numElem = domain.numElem() ;
 
-   Index_t numElem = domain.numElem() ;
+    sightModule mod(instance("CalcQForElems", 0, 0),getMeasures());  
+   
 
    if (numElem != 0) {
       Int_t allElem = numElem +  /* local elem */
@@ -2383,6 +2396,8 @@ void EvalEOSForElems(Domain& domain, Real_t *vnewc,
 static inline
 void ApplyMaterialPropertiesForElems(Domain& domain, Real_t vnew[])
 {
+   sightModule mod(instance("ApplyMaterialPropertiesForElems", 0, 0),getMeasures()); 
+
    Index_t numElem = domain.numElem() ;
 
   if (numElem != 0) {
@@ -2479,7 +2494,8 @@ void UpdateVolumesForElems(Domain &domain, Real_t *vnew,
 static inline
 void LagrangeElements(Domain& domain, Index_t numElem, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*  sightModule mod(instance("LagrangeElements", 2, 0),
+  sightModule mod(instance("LagrangeElements", 0, 0),
+		  /*
                   inputs(port(runCfg),
                          port(tsCfg)),
 #if defined(COMP)
@@ -2487,7 +2503,8 @@ void LagrangeElements(Domain& domain, Index_t numElem, context& runCfg, context&
 #elif defined(KULFI)
                    runOpts,
 #endif
-                  getMeasures());*/
+                    */
+                  getMeasures());
   
   Real_t *vnew = Allocate<Real_t>(numElem) ;  /* new relative vol -- temp */
 
@@ -2511,6 +2528,9 @@ void CalcCourantConstraintForElems(Domain &domain, Index_t length,
                                    Index_t *regElemlist,
                                    Real_t qqc, Real_t& dtcourant)
 {
+sightModule mod(instance("CalcCourantConstraint", 1, 0), inputs(port(context("length",  length))),getMeasures());
+	
+	
 #if _OPENMP   
    Index_t threads = omp_get_max_threads();
    static Index_t *courant_elem_per_thread;
@@ -2587,6 +2607,9 @@ static inline
 void CalcHydroConstraintForElems(Domain &domain, Index_t length,
                                  Index_t *regElemlist, Real_t dvovmax, Real_t& dthydro)
 {
+
+sightModule mod(instance("CalcHydroConstraint", 1, 0),inputs(port(context("length",  length))), getMeasures());
+
 #if _OPENMP   
    Index_t threads = omp_get_max_threads();
    static Index_t *hydro_elem_per_thread;
@@ -2651,6 +2674,8 @@ void CalcHydroConstraintForElems(Domain &domain, Index_t length,
 static inline
 void CalcTimeConstraintsForElems(Domain& domain) {
 
+sightModule mod(instance("CalcTimeConstraints", 0, 0), getMeasures());
+
    // Initialize conditions to a very large value
    domain.dtcourant() = 1.0e+20;
    domain.dthydro() = 1.0e+20;
@@ -2675,7 +2700,8 @@ void CalcTimeConstraintsForElems(Domain& domain) {
 static inline
 void LagrangeLeapFrog(Domain& domain, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*  sightModule mod(instance("LagrangeLeapFrog", 2, 0),
+  sightModule mod(instance("LagrangeLeapFrog", 0, 0),
+		  /*
                   inputs(port(runCfg),
                          port(tsCfg)),
 #if defined(COMP)
@@ -2683,7 +2709,8 @@ void LagrangeLeapFrog(Domain& domain, context& runCfg, context& tsCfg, context& 
 #elif defined(KULFI)
                    runOpts,
 #endif
-                  getMeasures());*/
+*/
+                  getMeasures());
 
 #ifdef SEDOV_SYNC_POS_VEL_LATE
    Domain_member fieldData[6] ;
@@ -2766,10 +2793,10 @@ int main(int argc, char *argv[])
    std::cout << "dtfixed="<<opts.dtfixed<<std::endl;
         
    context runCfg;
-   runCfg.add("its",     opts.its);
-   runCfg.add("numReg",  opts.numReg);
-   runCfg.add("balance", opts.balance);
-   runCfg.add("cost",    opts.cost);
+   runCfg.add("its",     opts.its, sight::common::module::notes(sight::common::module::publicized()));
+   runCfg.add("numReg",  opts.numReg, sight::common::module::notes(sight::common::module::publicized()));
+   runCfg.add("balance", opts.balance, sight::common::module::notes(sight::common::module::publicized()));
+   runCfg.add("cost",    opts.cost, sight::common::module::notes(sight::common::module::publicized()));
    context runOpts;
    #if defined(COMP)
       runOpts.add("nx",        opts.nx);
@@ -2786,15 +2813,15 @@ int main(int argc, char *argv[])
       #endif
       if(getenv("EXP_ID")) runOpts.add("EXP_ID", getenv("EXP_ID"));
    #else
-      runCfg.add("nx",        opts.nx);
-      runCfg.add("dtfixed",   (double)opts.dtfixed);
+      runCfg.add("nx",        opts.nx,  sight::common::module::notes(sight::common::module::publicized()));
+      runCfg.add("dtfixed",   (double)opts.dtfixed, sight::common::module::notes(sight::common::module::publicized()));
       //runCfg.add("dthydro",   opts.dthydro);
       //runCfg.add("dtcourant", opts.dtcourant);
-      runCfg.add("dtmax",     (double)opts.dtmax);
+      runCfg.add("dtmax",     (double)opts.dtmax, sight::common::module::notes(sight::common::module::publicized()));
       #if defined(AOS)
-      runCfg.add("dataStruct", string("AOS"));
+      runCfg.add("dataStruct", string("AOS"), sight::common::module::notes(sight::common::module::publicized()));
       #elif defined(SOA)
-      runCfg.add("dataStruct", string("SOA"));
+      runCfg.add("dataStruct", string("SOA"), sight::common::module::notes(sight::common::module::publicized()));
       if(getenv("EXP_ID")) runCfg.add("EXP_ID", getenv("EXP_ID"));
    #else
       #endif
@@ -2858,17 +2885,17 @@ int main(int argc, char *argv[])
                                                     #endif
                                                     ".rank_"<<myRank<<
                                                     (getenv("EXP_ID")? txt()<<".exp_"<<getenv("EXP_ID"): string("")));
-   sightModularApp LuleshApp("LULESH");
+   //sightModularApp LuleshApp("LULESH");
    
    // Set up the mesh and decompose. Assumes regular cubes for now
    Int_t col, row, plane, side;
    {
-/*   sightModule mod(instance("Setup", 1, 0),
+   sightModule mod(instance("Setup", 1, 0),
                    inputs(port(runCfg)),
 #if defined(COMP) || defined(KULFI)
                    opts.isReference, runOpts,
 #endif
-                   getMeasures());*/
+                   getMeasures());
 
    InitMeshDecomp(numRanks, myRank, &col, &row, &plane, &side);
 
@@ -2936,19 +2963,19 @@ int main(int argc, char *argv[])
       Real_t phaseStopTime = stopTime * (Real_t(phase+1)/numPhases);
       locDom->stoptime() = phaseStopTime;
       cout << "phase="<<phase<<", iter="<<locDom->cycle()<<"\n";
-      context phaseCfg("phase",   phase);
+      context phaseCfg("phase",   phase, sight::common::module::notes(sight::common::module::publicized()));
 #if defined(COMP) || defined(KULFI)
       context phaseOpts = runOpts;
-      phaseOpts.add("iter",    locDom->cycle());
-      phaseOpts.add("u_cut",   (double)locDom->u_cut());
-      phaseOpts.add("numNode", locDom->numNode());
-      phaseOpts.add("numElem", locDom->numElem());
+      phaseOpts.add("iter",    locDom->cycle(), sight::common::module::notes(sight::common::module::publicized()));
+      phaseOpts.add("u_cut",   (double)locDom->u_cut(),sight::common::module::notes(sight::common::module::publicized()));
+      phaseOpts.add("numNode", locDom->numNode(), sight::common::module::notes(sight::common::module::publicized()));
+      phaseOpts.add("numElem", locDom->numElem(), sight::common::module::notes(sight::common::module::publicized()));
       phaseOpts.add(symmErr);
 #else
-      phaseCfg.add("iter",    locDom->cycle());
-      phaseCfg.add("u_cut",   (double)locDom->u_cut());
-      phaseCfg.add("numNode", locDom->numNode());
-      phaseCfg.add("numElem", locDom->numElem());      
+      phaseCfg.add("iter",    locDom->cycle(), sight::common::module::notes(sight::common::module::publicized()));
+      phaseCfg.add("u_cut",   (double)locDom->u_cut(), sight::common::module::notes(sight::common::module::publicized()));
+      phaseCfg.add("numNode", locDom->numNode(), sight::common::module::notes(sight::common::module::publicized()));
+      phaseCfg.add("numElem", locDom->numElem(), sight::common::module::notes(sight::common::module::publicized()));      
       phaseCfg.add(symmErr);
 #endif
       /*cout << "phaseOpts="<<phaseOpts.str()<<endl;
@@ -2974,15 +3001,17 @@ int main(int argc, char *argv[])
       while((locDom->time() < phaseStopTime) && (locDom->cycle() < opts.its)) {
          context tsCfg = phaseCfg;
          tsCfg.add("t",       (double)locDom->time());
+         context tsOpts;
    #if defined(COMP) || defined(KULFI)
-         context tsOpts = phaseOpts;
+         tsOpts = phaseOpts;
          tsOpts.add("dt",      (double)locDom->deltatime());
    #else
          tsCfg.add("t",       (double)locDom->time());
          tsCfg.add("dt",      (double)locDom->deltatime());
    #endif
 
-/*         sightModule tsMod(instance("Time Step", 2, 0),
+         sightModule tsMod(instance("Time Step", 0, 0),
+			 /*
                          inputs(port(runCfg),
                                 port(tsCfg)),
 #if defined(COMP)
@@ -2990,8 +3019,9 @@ int main(int argc, char *argv[])
 #elif defined(KULFI)
                    runOpts,
 #endif
+  */
                          getMeasures());
-*/
+
          TimeIncrement(*locDom, runCfg, tsCfg, tsOpts, opts) ;
          //cout << "    Inner: phase="<<phase<<", iter="<<locDom->cycle()<<", t="<<locDom->time()<<", phaseStopTime="<<phaseStopTime<<", dt="<<locDom->deltatime()<<"\n";
          LagrangeLeapFrog(*locDom, runCfg, tsCfg, tsOpts, opts) ;

@@ -29,17 +29,17 @@ SIGHT_LINKFLAGS = \
 	          -lpthread
                   #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
 
-RAPL_ENABLED = 1
+RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-override CC=clang #icc #gcc
-override CCC=clang++ #icpc #clang++ #g++
-MPICC = mpi${CC}
-MPICCC = ${ROOT_PATH}/tools/mpi${CCC}
+override CC=gcc
+override CCC=g++
+MPICC = mpicc
+MPICCC = mpic++
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -63,8 +63,8 @@ REMOTE_ENABLED := 0
 else
 # Default distribution disables remote access since this capability requires us to run a web server
 # and many compute centers disallow this
-REMOTE_ENABLED := 1
-#REMOTE_ENABLED := 0
+#REMOTE_ENABLED := 1
+REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)
@@ -109,7 +109,7 @@ MPI_ENABLED = 1
 
 .PHONY: apps
 ifeq (${MPI_ENABLED}, 1)
-apps: mfem CoMD #mcbench
+apps: mfem CoMD CoEVP lulesh #mcbench
 else
 apps: mfem
 endif
@@ -119,6 +119,15 @@ mfem: libsight_structure.so
 
 CoMD: 
 	cd apps/CoMD/src-mpi; make ${MAKE_DEFINES}
+	
+poi:
+	cd apps/poi; make ${MAKE_DEFINES}
+
+CoEVP:
+	cd apps/CoEVP/CM/exec; make ${MAKE_DEFINES} kintest
+
+lulesh:
+	cd apps/lulesh;make ${MAKE_DEFINES} all
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)

@@ -31,7 +31,8 @@ OBJECTS2.0.REAL8.SOA  = $(SOURCES2.0:.cc=.real8.soa.o)
 OBJECTS2.0.REAL16.SOA = $(SOURCES2.0:.cc=.real16.soa.o)
 
 #Default build suggestions with OpenMP for g++
-CXXFLAGS = -g -O3 -DVIZ_MESH -DCOMP -I. -Wall ${SIGHT_CFLAGS} ${SILO_INC} -Wno-unknown-pragmas #-fopenmp
+#CXXFLAGS = -g -O3 -DVIZ_MESH -DCOMP -I. -Wall ${SIGHT_CFLAGS} ${SILO_INC} -Wno-unknown-pragmas #-fopenmp
+CXXFLAGS = -g -O3 -DVIZ_MESH -I. -Wall ${SIGHT_CFLAGS} ${SILO_INC} -Wno-unknown-pragmas #-fopenmp
 LDFLAGS = -g -O3 ${SIGHT_LINKFLAGS} ${SILO_LIB} #-fopenmp
 
 #Below are reasonable default flags for a serial build
