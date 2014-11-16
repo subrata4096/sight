@@ -166,8 +166,7 @@ class processedTrace: public trace
   virtual void destroy();
 }; // class processedTrace
 
-
-class traceStream: public attrObserver, public common::trace, public sightObj
+class traceStream: public attrObserver, public common::trace, public sightObj, public common::traceObserver
 {    
   private:
   // Unique ID of this trace
@@ -180,9 +179,24 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   std::list<std::string> contextAttrs;
   // Records the context attributes that have already been initialized
   std::set<std::string> initializedCtxtAttrs;
-  
   vizT viz;
   mergeT merge;
+
+  //Flag that indicates whether this trace's context has already been initialized (it may have 0 keys)
+  bool contextAttrsInitialized;
+
+  // The keys of all the tracer attributes ever observed
+  std::list<std::string> traceAttrs;
+  
+  // Set that contains the same attributes as traceAttrs. It is used for quick lookups to ensure that
+  // all observations have the same set of Trace attributes, even for cases where they are not
+  // specified up-front for the entire trace but separately for each observation.
+  std::set<std::string> traceAttrsSet;
+	
+   // Set that contains the same attributes as contextAttrs. It is used for quick lookups to ensure that
+   // all observations have the same set of context attributes, even for cases where the context is not
+   // specified up-front for the entire trace but separately for each observation.
+   std::set<std::string> contextAttrsSet;
   
   public:
   // Callers can optionally provide a traceID that this traceStream will use. This is useful for cases where 
@@ -216,7 +230,8 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   private:
   
   // Records all the observations of trace variables since the last time variables in contextAttrs changed values
-  std::map<std::string, std::pair<attrValue, anchor> > obs;
+  std::map<std::string, std::pair<attrValue, int> > obs;
+  //std::map<std::string, std::pair<attrValue, anchor> > obs;
     
   public:
   int getTraceID() const { return traceID; }
@@ -234,16 +249,32 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   void traceFullObservation(const std::map<std::string, attrValue>& contextAttrsMap, 
                             const std::list<std::pair<std::string, attrValue> >& obsList, 
                             const anchor& target);
+  public:
+    // Called on each observation from the traceObserver this object is observing
+  // traceID - unique ID of the trace from which the observation came
+  // ctxt - maps the names of the observation's context attributes to string representations of their values
+  // obs - maps the names of the trace observation attributes to string representations of their values
+  // obsAnchor - maps the names of the trace observation attributes to the anchor that identifies where they were observed
+
+  // Called by any observers of the stream, which may have filtered the raw observation, to inform the traceStream
+  // that the given observation should actually be emitted to the output
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt,
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, int>&      obsAnchor/*,
+               const std::set<traceObserver*>&           observers*/);	
   
 //  private:
   
   // Emits the output record records the given context and observations pairing
   void emitObservations(const std::list<std::string>& contextAttrs, 
-                        std::map<std::string, std::pair<attrValue, anchor> >& obs);
+                        std::map<std::string, std::pair<attrValue, int> >& obs);
+                        //std::map<std::string, std::pair<attrValue, anchor> >& obs);
   
   // Emits the output record records the given context and observations pairing
   void emitObservations(const std::map<std::string, attrValue>& contextAttrsMap, 
-                        std::map<std::string, std::pair<attrValue, anchor> >& obs);
+                        std::map<std::string, std::pair<attrValue, int> >& obs);
+                        //std::map<std::string, std::pair<attrValue, anchor> >& obs);
 }; // class traceStream
 
 class processedTraceStream: public traceStream

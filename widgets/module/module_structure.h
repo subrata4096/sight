@@ -32,6 +32,26 @@ extern moduleConfHandlerInstantiator moduleConfHandlerInstance;
 class moduleTraceStream;
 
 
+class runtimeRegression : public common::traceObserver {
+//class runtimeRegression : public traceStream {
+	  private:
+		std::string workDir;
+		// we need to keep a map of a regressor for each observation
+	  public:
+
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt,
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, int>&      obsAnchor);
+
+  // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+  // This method is optional.
+  void obsFinished();
+};//runtimeRegression
+
+
 //#ifndef MODULE_STRUCTURE_C
 // Rename for contexts, groups and ports that enables users to refer to them without prepending common::module
 //typedef common::module::group group;
@@ -273,6 +293,7 @@ class module: public sightObj, public common::module
 
   int moduleID;
   group g;
+  runtimeRegression*  regressFit;
 
   // The context of this module execution, which is a combination of the contexts of all of its inputs
   std::vector<context> ctxt;
@@ -686,6 +707,8 @@ class modularApp: public block
     return NULL;
   }
 }; // class modularApp
+
+
 
 // Extends the normal context by allowing the caller to specify a description of the comparator to be used
 // for each key
@@ -1178,6 +1201,10 @@ class processedModule : public structure::module {
 // Specialization of traceStreams for the case where they are hosted by a module node
 class moduleTraceStream: public traceStream
 {
+  private:
+	  // The observers that processes observations of this object
+	  module* mFilter;
+	  runtimeRegression* regressFit;
   public:
   moduleTraceStream(int moduleID, module* m, vizT viz, mergeT merge, int traceID, properties* props=NULL);
 

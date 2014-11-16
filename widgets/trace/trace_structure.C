@@ -357,7 +357,7 @@ void traceStream::observePost(std::string key, attrObserver::attrObsAction actio
 // Called by traceAttr() to inform the trace that a new observation has been made
 void traceStream::traceAttrObserved(std::string key, const attrValue& val, anchor target) {
   //cout << "trace::traceAttrObserved("<<key<<", "<<val.str()<<")"<<endl;
-  obs[key] = make_pair(val, target);
+  obs[key] = make_pair(val, target.getID());
   //tracerKeys.insert(key);
 }
 
@@ -367,20 +367,183 @@ void traceStream::traceAttrObserved(std::string key, const attrValue& val, ancho
 void traceStream::traceFullObservation(const std::map<std::string, attrValue>& contextAttrsMap, 
                                  const std::list<std::pair<std::string, attrValue> >& obsList, 
                                  const anchor& target) {
+#if 0
   // Temporary observation map for just this observation
-  std::map<std::string, std::pair<attrValue, anchor> > curObs;
+  //std::map<std::string, std::pair<attrValue, anchor> > curObs;
+  std::map<std::string, std::pair<attrValue, int> > curObs;
   for(list<pair<string, attrValue> >::const_iterator o=obsList.begin(); o!=obsList.end(); o++)
-    curObs[o->first] = make_pair(o->second, target);
+    curObs[o->first] = make_pair(o->second, target.getID());
 
 //cout << "traceStream::traceFullObservation() #contextAttrsMap="<<contextAttrsMap.size()<<", #obsList="<<obsList.size()<<", #obs="<<obs.size()<<endl;  
   // Call emitObservations with the temporary context and observation records, which are separate from the
   // ones that are maintained by this trace and record multiple separate observations for the same context
   emitObservations(contextAttrsMap, curObs);
+#endif
+
+  //Subrata: modification
+  std::map<std::string, std::string> ctxt;
+  for(std::map<std::string, attrValue> ::const_iterator c=contextAttrsMap.begin(); c!=contextAttrsMap.end(); c++)
+  {
+     ctxt[c->first] = (c->second).getAsStr(); 
+  }
+
+  std::map<std::string, std::string> obsMap;            
+  std::map<std::string, int> obsAnchors;            
+  for(list<pair<string, attrValue> >::const_iterator o=obsList.begin(); o!=obsList.end(); o++)
+  {
+     obsMap[o->first] = (o->second).getAsStr();
+     obsAnchors[o->first] = target.getID();
+  }
+ 
+  this->emitObservation(traceID,ctxt,obsMap,obsAnchors);
+
+}
+
+
+// Called on each observation from the traceObserver this object is observing
+// traceID - unique ID of the trace from which the observation came
+// ctxt - maps the names of the observation's context attributes to string representations of their values
+// obs - maps the names of the trace observation attributes to string representations of their values
+// obsAnchor - maps the names of the trace observation attributes to the anchor that identifies where they were observed
+
+// Called by any observers of the stream, which may have filtered the raw observation, to inform the traceStream
+// that the given observation should actually be emitted to the output
+void traceStream::observe(int fromTraceID,
+                          const std::map<std::string, std::string>& ctxt,
+                          const std::map<std::string, std::string>& obsList,
+                          const std::map<std::string, int>& obsAnchor)
+{
+  //cout << "traceStream::observe("<<fromTraceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<", #obs="<<obs.size()<<endl;
+
+  //this->emitObservation(fromTraceID, ctxt,obs, obsAnchor);
+
+    // Read out the current values of the context attributes and store them in a map
+  std::map<std::string, attrValue> contextAttrsMap;
+  for(std::list<std::string>::const_iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
+    const std::set<attrValue>& vals = attributes->get(*a);
+    assert(vals.size()>0);
+    if(vals.size()>1) { cerr << "traceStream::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
+    contextAttrsMap[*a] = *vals.begin();
+  }
+
+    // Temporary observation map for just this observation
+  std::map<std::string, std::pair<attrValue, int> > curObs;
+  for(std::map<std::string,std::string>::const_iterator o=obsList.begin(); o!=obsList.end(); o++)
+  {
+    attrValue val(o->second, attrValue::unknownT);
+    std::string obsname = o->first;
+    std::map<std::string, int> :: const_iterator posTarget = obsAnchor.find(obsname);
+    int target = posTarget->second;
+    curObs[o->first] = make_pair(val, target);
+  }
+
+  emitObservations(contextAttrsMap, curObs);
+
+	  
+#if 0 
+ // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
+  // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
+  if(contextAttrsInitialized) assert(contextAttrs.size() == ctxt.size());
+  //for(long i=0; i<numCtxtAttrs; i++) {
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
+    //string ctxtName = properties::get(props, txt()<<"cKey_"<<i);
+    string ctxtName = c->first;
+    //cout << traceID<<": "<<ctxtName<<", ts->contextAttrsInitialized="<<ts->contextAttrsInitialized<<endl;
+    if(!contextAttrsInitialized) {
+      contextAttrs.push_back(ctxtName);
+      // Context attributes cannot be repeated
+      assert(contextAttrsSet.find(ctxtName) == contextAttrsSet.end());
+      contextAttrsSet.insert(ctxtName);
+    } else
+      assert(contextAttrsSet.find(ctxtName) != contextAttrsSet.end());
+  }
+  // The context attributes of this trace are now definitely initialized
+  contextAttrsInitialized = true;
+  // Read all the trace attributes. If traceAttrs is empty, it is filled with the trace attributes of 
+  // this observation. Otherwise, we verify that this observation's trace is identical to prior observations.
+  //if(ts->traceAttrsInitialized) assert(ts->traceAttrs.size() == numTraceAttrs);
+  //for(long i=0; i<numTraceAttrs; i++) {
+  for(map<string, string>::const_iterator t=obs.begin(); t!=obs.end(); t++) {
+    //string traceName = properties::get(props, txt()<<"tKey_"<<i);
+    string traceName = t->first;
+    /*if(!ts->traceAttrsInitialized) {
+      ts->traceAttrs.push_back(traceName);
+      // Trace attributes cannot be repeated
+      assert(ts->traceAttrsSet.find(traceName) == ts->traceAttrsSet.end());
+      ts->traceAttrsSet.insert(traceName);
+    } else
+      assert(ts->traceAttrsSet.find(traceName) != ts->traceAttrsSet.end());*/
+
+    // If this trace attribute has not yet been observed, record it
+    if(traceAttrsSet.find(traceName) == traceAttrsSet.end()) {
+      traceAttrs.push_back(traceName);
+      traceAttrsSet.insert(traceName);
+    }
+  }
+#endif
+  // The trace attributes of this trace are now definitely initialized
+  //traceAttrsInitialized = true;
+#if 0
+  ostringstream cmd;
+  cmd << "traceRecord(\""<<traceID<<"\", ";
+
+  // Emit the observed values of tracer attributes
+  cmd << "{";
+  //for(long i=0; i<numTraceAttrs; i++) {
+  { int i=0;
+  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++, i++) {
+    if(i!=0) cmd << ", ";
+    //string tKey = properties::get(props, txt()<<"tKey_"<<i);
+    //string tVal = properties::get(props, txt()<<"tVal_"<<i);
+    //cmd << "\""<< tKey << "\": \"" << tVal <<"\"";
+    attrValue val(o->second, attrValue::unknownT);
+    cmd << "\""<< o->first << "\": \"" << val.getAsStr() <<"\"";
+    // If some observers are listening on this traceStream, record the current observation so they can look at it
+    //if(ts->numObservers()>0) obs[tKey] = tVal;
+  } }
+  cmd << "}, {";
+
+  // Emit the observed anchors of tracer attributes
+  //for(long i=0; i<numTraceAttrs; i++) {
+  { int i=0;
+  for(map<string, int>::const_iterator o=obsAnchor.begin(); o!=obsAnchor.end(); o++, i++) {
+    if(i!=0) cmd << ", ";
+    //string tKey = properties::get(props, txt()<<"tKey_"<<i);
+    //anchor tAnchor(properties::getInt(props, txt()<<"tAnchorID_"<<i));
+    //cmd << "\""<< tKey << "\": \"" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"\"";
+    cmd << "\""<< o->first << "\": \"" << "" /*(o->second==anchor::noAnchor? "": o->second.getLinkJS())*/ <<"\"";
+    //cmd << "\""<< o->first << "\": \"" << (o->second==anchor::noAnchor? "": o->second.getLinkJS()) <<"\"";
+
+    // If some observers are listening on this traceStream, record the current observation so they can look at it
+    //if(ts->numObservers()>0) obsAnchor[tKey] = tAnchor;
+  }}
+  cmd << "}, {";
+
+  // Emit the current values of the context attributes
+  //for(long i=0; i<numCtxtAttrs; i++) {
+  { int i=0;
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++, i++) {
+    if(i!=0) cmd << ", ";
+    /*string cKey = properties::get(props, txt()<<"cKey_"<<i);
+    string cVal = properties::get(props, txt()<<"cVal_"<<i);
+    cmd << "\"" << cKey << "\": \"" << cVal << "\"";*/
+    attrValue val(c->second, attrValue::unknownT);
+    cmd << "\"" << c->first << "\": \"" << val.getAsStr() << "\"";
+
+    // If some observers are listening on this traceStream, record the current observation so they can look at it
+    //if(ts->numObservers()>0) ctxt[cKey] = cVal;
+  }}
+  cmd << "}, \""<<viz2Str(viz)<<"\");";
+  dbg.widgetScriptCommand(cmd.str());
+
+  //emitEmptyObservation(traceID, observers);
+#endif
 }
 
 // Emits the output record records the given context and observations pairing
 void traceStream::emitObservations(const std::list<std::string>& contextAttrs, 
-                             std::map<std::string, std::pair<attrValue, anchor> >& obs) {
+                             std::map<std::string, std::pair<attrValue, int> >& obs) {
+                             //std::map<std::string, std::pair<attrValue, anchor> >& obs) {
   // Read out the current values of the context attributes and store them in a map
   std::map<std::string, attrValue> contextAttrsMap;
   for(std::list<std::string>::const_iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
@@ -395,7 +558,8 @@ void traceStream::emitObservations(const std::list<std::string>& contextAttrs,
 
 // Emits the output record records the given context and observations pairing
 void traceStream::emitObservations(const std::map<std::string, attrValue>& contextAttrsMap, 
-                                   std::map<std::string, std::pair<attrValue, anchor> >& obs) {
+                                   std::map<std::string, std::pair<attrValue, int> >& obs) {
+                                   //std::map<std::string, std::pair<attrValue, anchor> >& obs) {
   // Only emit observations of the trace variables if we have made any observations since the last change in the context variables
   if(obs.size()==0) return;
     
@@ -414,10 +578,12 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   pMap["numTraceAttrs"] = txt()<<obs.size();
   // Emit the recently observed values and anchors of tracer attributes
   int i=0;
-  for(map<string, pair<attrValue, anchor> >::const_iterator o=obs.begin(); o!=obs.end(); o++, i++) {
+  //for(map<string, pair<attrValue, anchor> >::const_iterator o=obs.begin(); o!=obs.end(); o++, i++) {
+  for(map<string, pair<attrValue, int> >::const_iterator o=obs.begin(); o!=obs.end(); o++, i++) {
     pMap[txt()<<"tKey_"<<i] = o->first;
     pMap[txt()<<"tVal_"<<i] = o->second.first.serialize();
-    pMap[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
+    pMap[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second;
+    //pMap[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
   }
   
   // Emit the current values of the context attributes

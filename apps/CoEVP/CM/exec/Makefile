@@ -129,7 +129,7 @@ CXXFLAGS += -I$(AS_LOC) -I$(MTL_LOC) -I$(INTERPDB_LOC) -I$(INTERP_LOC) -I$(DB_LO
 CXXFLAGS += -I$(TENSOR_LOC) -I$(CM_LOC) -I$(EOS_LOC) -I$(FS_LOC)
 CXXFLAGS += -DDBL_SNAN_IS_BROKEN -DFLT_SNAN_IS_BROKEN
 
-CXXFLAGS += -I/home/shay/b/sjavagal/Sight/sight_gbDevelop_branch/sight/apps/CoEVP/
+CXXFLAGS += -I../../
 CXXFLAGS += -I../../../.. ${SIGHT_CFLAGS}
 
 MAKEDEPEND = gcc -MM -MT $*.o $(CXXFLAGS) -o $*.d.tmp $<

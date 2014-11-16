@@ -258,7 +258,14 @@ remoteModuleEdge::~remoteModuleEdge() {
   assert(!destroyed);
 }
 
-  
+
+std::string data2str(const map<string, string>& data) {
+	  ostringstream s;
+	    for(map<string, string>::const_iterator d=data.begin(); d!=data.end(); d++) { s << d->first << "=>"<<d->second<<" "; }
+	      return s.str();
+}
+
+
 /************************
  ***** instanceTree *****
  ************************/
@@ -905,7 +912,10 @@ module::module(const instance& inst, const std::vector<port>& in, std::vector<po
 properties* module::setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me) {
   group g(modularApp::mStack, inst);
   bool isDerived = (props!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
- 
+
+  //regressFit = new runtimeRegression();
+  //registerObserver(regressFit);
+
   if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     if(!modularApp::isInstanceActive()) {
       cerr << "ERROR: module "<<inst.str()<<" entered while there no instance of modularApp is active!"<<endl;
@@ -1028,7 +1038,7 @@ module::~module() {
     for(int i=0; i<outs.size(); i++) if(outsSet.find(i)==outsSet.end()) cerr << " "<<i;
     cerr << endl;
   }
-  
+
   if(props->active) {
     // If this is an instance of module rather than a class that derives from module
     if(!isDerived) {
@@ -1056,7 +1066,12 @@ module::~module() {
 
     // Complete the measurement of application's behavior during the module's lifetime
     completeMeasurement();
-    
+
+    //subrata: register runtimeRegression
+
+     //modularApp::registerTraceStream(g, new runtimeRegression());
+     cout << g.name() << endl;
+     modularApp::moduleTrace[g]->registerObserver(new runtimeRegression());
     // Add to the trace observation the properties of all of the module's outputs
     for(int i=0; i<outs.size(); i++) {
       if(outs[i].ctxt==NULL) continue;
@@ -1923,7 +1938,19 @@ processedModule::~processedModule() {
 
 moduleTraceStream::moduleTraceStream(int moduleID, module* m, vizT viz, mergeT merge, int traceID, properties* props) : 
   traceStream(viz, merge, traceID, setProperties(moduleID, m, viz, merge, props))
-{ }
+{ 
+#if 0
+     // if(observer==NULL) {
+      // Create a fresh instance of module to analyze data of this stream
+      //mFilter = new module(moduleID);
+      regressFit = new runtimeRegression();
+      registerObserver(regressFit);
+      //registerObserver(mFilter);
+      registerObserver(this);
+      //modularApp::registerModule(moduleID, mFilter, NULL);
+    // }
+#endif
+}
 
 properties* moduleTraceStream::setProperties(int moduleID, module* m, vizT viz, mergeT merge, properties* props) {
   if(props==NULL) props = new properties();
@@ -1952,6 +1979,10 @@ void moduleTraceStream::destroy() {
 
 moduleTraceStream::~moduleTraceStream() {
   assert(!destroyed);
+#if 0
+  //if(mFilter)          { delete mFilter; }
+  if(regressFit) {delete regressFit;}
+#endif
 }
 
 /*********************************
@@ -3396,6 +3427,228 @@ std::string ModuleStreamRecord::str(std::string indent) const {
   s << indent << "]";
   
   return s.str();
+}
+
+//******************************************************
+//*********runtimeRegression**************************//
+//****************************************************//
+// Interface implemented by objects that listen for observations a traceStream reads. Such objects
+// call traceStream::registerObserver() to inform a given traceStream that it should observations.
+void runtimeRegression::observe(int traceID,
+                            const std::map<std::string, std::string>& ctxt,
+                            const std::map<std::string, std::string>& obs,
+                            const std::map<std::string, int>&      obsAnchor) {
+
+  cout << "runtimeRegression::observe() this="<<this<<endl;
+  cout << "ctxt="<<endl<<data2str(ctxt)<<endl;
+  cout << "obs="<<endl<<data2str(obs)<<endl;
+
+#if 0
+  // Determine which context and trace attributes are numeric and 
+  // check that all observations have the same numeric context and trace dimensions
+  map<string, /*double*/string> numericCtxt  = getNumericAttrs(ctxt, numericCtxtNames,  "context");
+  map<string, /*double*/string> numericTrace = getNumericAttrs(obs,  numericTraceNames, "trace");
+
+  /*cout << "numericCtxt="<<endl<<data2str(numericCtxt)<<endl;
+  cout << "numericTrace="<<endl<<data2str(numericTrace)<<endl;
+  
+  cout << "#numericCtxtNames="<<numericCtxtNames.size()<<", #numericTraceNames="<<numericTraceNames.size()<<endl;*/
+
+  /*  int maxDegree = 2;
+  // The total number of polynomial terms to maxDegree:
+  long numTerms = (numericCtxt.size()==1 ? maxDegree+1:
+                         // #numericCtxt^0 + #numericCtxt^1 + #numericCtxt^2 + ... + #numericCtxt^maxDegree = #numericCtxt^(maxDegree+1) - 1
+                         pow(numericCtxt.size(), maxDegree+1));*/
+
+  // Compute all the polynomial terms of degrees upto and including maxDegree
+  /*vector<double> termVals;
+  for(int degree=1; degree<=maxDegree; degree++)
+    addPolyTerms(numericCtxt, 0, degree, termVals);*/
+
+  // Track the context attributes with constant values
+  for(map<string, /*double*/string>::iterator c=numericCtxt.begin(); c!=numericCtxt.end(); c++) {
+    // If this is the first observation to be observed by this object
+    if(numObservations==0) {
+      // Initialize ctxtConstVals to the first observed value for each context attribute
+      ctxtConstVals[c->first] = c->second;
+    } else {
+      // Remove from ctxtConstVals any context attributes that have multiple values
+      if(ctxtConstVals.find(c->first) != ctxtConstVals.end() &&
+         ctxtConstVals[c->first] != c->second) {
+        ctxtConstVals.erase(c->first);
+ }
+    }
+  }
+
+  // Record the observed data
+  dataCtxt.push_back(numericCtxt);
+  dataTrace.push_back(numericTrace);
+
+//  // For each numeric trace attribute, write to its file the observation's entire numeric 
+//  // context and the value of this attribute.
+//  for(map<string, /*double*/string>::iterator t=numericTrace.begin(); t!=numericTrace.end(); t++) {
+//    // If this is the first observation to be observed by this object
+//    if(numObservations==0) {
+//      // Create files for all the numeric trace attributes 
+//      //string outFName = txt()<<"polyFitFilter.data."<<fileNum<<"."<<t->first;
+//      //outFiles[t->first] = new ofstream(outFName.c_str());
+//      outProcessors[t->first] = 
+//              new externalTraceProcessor_File(string(ROOT_PATH)+"/widgets/funcFit/funcFit", 
+//                                              easylist<string>(txt()<<workDir<<"/in"<<fileNum<<".cfg"),
+//                                              txt()<<workDir<<"/in"<<fileNum<<"."<<t->first<<".data",
+//                                              easylist<string>(txt()<<workDir<<"/in"<<fileNum<<"."<<t->first<<".log",
+//                                                               "\""+t->first+"\""));
+//     
+//      /*// Write the column headers
+//      for(map<string, double>::iterator c=numericCtxt.begin(); c!=numericCtxt.end(); c++)
+//        *(outFiles[t->first]) << c->first << "\t";
+//      *(outFiles[t->first]) << t->first << "\n";*/
+//    }
+//    /*for(map<string, double>::iterator c=numericCtxt.begin(); c!=numericCtxt.end(); c++)
+//      *(outFiles[t->first]) << c->second << "\t";
+//    *(outFiles[t->first]) << t->second << "\n";*/
+//    
+//    // Add a constant term
+//    numericCtxt["module:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
+//    
+//    std::map<std::string, std::string> numTraceVal;
+//    numTraceVal[t->first] = t->second;
+//    std::map<std::string, anchor> numTraceAnchor;
+//    outProcessors[t->first]->observe(traceID, numericCtxt, numTraceVal, numTraceAnchor);
+//  }
+//
+//  // If we've just created a bunch of output processors, insert them between this object and its observers
+//  if(numObservations==0) {
+//    set<traceObserver*> outProcObservers;
+//    for(map<string, externalTraceProcessor_File*>::iterator p=outProcessors.begin(); p!=outProcessors.end(); p++)
+//      outProcObservers.insert(p->second);
+//    prependObservers(outProcObservers);
+//  }
+
+  numObservations++;
+#endif
+}
+
+// Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+// This method is optional.
+void runtimeRegression::obsFinished() {
+#if 0
+  //cout << "polyFitFilter::obsFinished() this="<<this<<endl;
+  
+  // Remove from numericCtxtNames all the constant contexts
+  for(map<string, string>::iterator c=ctxtConstVals.begin(); c!=ctxtConstVals.end(); c++)
+    numericCtxtNames.erase(c->first);
+
+  // If we've not collected at least one observation or all the context dimensions are constant, 
+  // don't do any function fitting and just stop
+  if(numObservations==0 || (numericCtxtNames.size() - ctxtConstVals.size())==0) return;
+
+  // Set of all the externalTraceProcessor that will listen to this module's observations
+  // and run them through funcFit
+  set<common::traceObserver*> outProcessors;
+
+  // For each numeric trace attribute, write to its file the observation's entire numeric 
+  // context and the value of this attribute.
+  for(set<string>::iterator t=numericTraceNames.begin(); t!=numericTraceNames.end(); t++) {
+    //cout << "Trace attribute "<<*t<<endl;
+          common::traceObserver* out =
+            new externalTraceProcessor_File(string(ROOT_PATH)+"/widgets/funcFit/funcFit",
+                                            easylist<string>(txt()<<workDir<<"/in"<<fileNum<<".cfg"),
+                                            txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".data",
+                                            easylist<string>(*t/*,
+                                                             txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".log"*/));
+    outProcessors.insert(out);
+
+    // Pass all the observations to this processor
+    assert(dataCtxt.size() == dataTrace.size());
+    std::list<std::map<std::string, std::string> >::iterator dc = dataCtxt.begin();
+    std::list<std::map<std::string, std::string> >::iterator dt = dataTrace.begin();
+
+    for(; dc!=dataCtxt.end(); dt++, dc++) {
+      /*cout << "dc="<<endl<<data2str(*dc)<<endl;
+      cout << "dt="<<endl<<data2str(*dt)<<endl;*/
+
+      // If this is the first pass through data
+      if(t==numericTraceNames.begin()) {
+        // Trim the context attributes of all the observations to remove ones with values that were 
+        // constant or were subsequently discovered to be not consistently numeric
+        for(map<string, string>::iterator c=dc->begin(); c!=dc->end();) {
+          // If the current context attribute is not a member of numericCtxtNames, remove it
+	if(numericCtxtNames.find(c->first) == numericCtxtNames.end())
+            dc->erase(c++);
+          else
+            c++;
+        }
+
+        // Add a constant term to the current observation's context
+        (*dc)["module:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
+      }
+
+      // Put together a map that holds just the value of the current trace attribute in this observation
+      std::map<std::string, std::string> numTraceVal;
+      assert(dt->find(*t) != dt->end());
+      numTraceVal[*t] = (*dt)[*t];
+
+      // An empty anchors map
+      std::map<std::string, int> numTraceAnchor;
+
+      // Pass the observation
+      out->observe(-1, *dc, numTraceVal, numTraceAnchor);
+    }
+  }
+
+  // Insert the newly-created output processors between this object and its observers
+  prependObservers(outProcessors);
+  // Now that all the data has been emitted to all the processors, set up the input files
+  // for the funcFit runs that will do the processing
+
+  // Write out the configuration file before the command runs
+  {
+    ofstream cfgFile((txt()<<workDir<<"/in"<<fileNum<<".cfg").c_str(), ofstream::out);
+
+    // Number of data lines
+    cfgFile << "N "<<numObservations<<endl;
+
+    // Number of parameters
+    cfgFile << "p "<<(numericCtxtNames.size()+1)<<endl;
+
+    // Parameter names
+    int l=0;
+    // Polynomial terms
+    for(set<string>::const_iterator c=numericCtxtNames.begin(); c!=numericCtxtNames.end(); c++, l++)
+      cfgFile << "pname "<<l<<" "<<*c<<endl;
+    // Constant term
+    cfgFile << "pname "<<l<<" module:polyFitFilter:constant:constant"<<endl;
+
+    // Parameter links (one param per link)
+    cfgFile << "L "<<(numericCtxtNames.size()+1);
+    // Polynomial terms
+    for(set<string>::const_iterator c=numericCtxtNames.begin(); c!=numericCtxtNames.end(); c++)
+      cfgFile << " 1";
+    // Constant term
+    cfgFile << " 1";
+    cfgFile << endl;
+
+    // Link identification (one param per link)
+    l=0;
+    // Polynomial terms
+    for(set<string>::const_iterator c=numericCtxtNames.begin(); c!=numericCtxtNames.end(); c++, l++)
+      cfgFile << "l "<<l<<" "<<l<<endl;
+    // Constant Term
+    cfgFile << "l "<<l<<" "<<l<<endl;
+
+    // GA Parameters
+    cfgFile << "GAT 10"<<endl;
+    cfgFile << "GAS 12"<<endl;
+  }
+
+  // Finish the external processors to run funcFit and forward the results to downstream observers
+  for(set<common::traceObserver*>::iterator f=outProcessors.begin(); f!=outProcessors.end(); f++) {
+    (*f)->obsFinished();
+    delete *f;
+  }
+
+#endif 
 }
 
 }; // namespace structure
