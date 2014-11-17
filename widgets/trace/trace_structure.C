@@ -367,20 +367,9 @@ void traceStream::traceAttrObserved(std::string key, const attrValue& val, ancho
 void traceStream::traceFullObservation(const std::map<std::string, attrValue>& contextAttrsMap, 
                                  const std::list<std::pair<std::string, attrValue> >& obsList, 
                                  const anchor& target) {
-#if 0
-  // Temporary observation map for just this observation
-  //std::map<std::string, std::pair<attrValue, anchor> > curObs;
-  std::map<std::string, std::pair<attrValue, int> > curObs;
-  for(list<pair<string, attrValue> >::const_iterator o=obsList.begin(); o!=obsList.end(); o++)
-    curObs[o->first] = make_pair(o->second, target.getID());
 
-//cout << "traceStream::traceFullObservation() #contextAttrsMap="<<contextAttrsMap.size()<<", #obsList="<<obsList.size()<<", #obs="<<obs.size()<<endl;  
-  // Call emitObservations with the temporary context and observation records, which are separate from the
-  // ones that are maintained by this trace and record multiple separate observations for the same context
-  emitObservations(contextAttrsMap, curObs);
-#endif
-
-  //Subrata: modification
+#if RUNTIME_ANOMALY_DETECTION   //runtime anomaly detection. will not dump observations in files
+  //subrata: modification
   std::map<std::string, std::string> ctxt;
   for(std::map<std::string, attrValue> ::const_iterator c=contextAttrsMap.begin(); c!=contextAttrsMap.end(); c++)
   {
@@ -396,6 +385,22 @@ void traceStream::traceFullObservation(const std::map<std::string, attrValue>& c
   }
  
   this->emitObservation(traceID,ctxt,obsMap,obsAnchors);
+  //end subrata: modifications
+#else     //not runtime anomaly detection. 
+  //subrata: the following section will dump the records in a file.
+  
+  // Temporary observation map for just this observation
+  //std::map<std::string, std::pair<attrValue, anchor> > curObs;
+  std::map<std::string, std::pair<attrValue, int> > curObs;
+  for(list<pair<string, attrValue> >::const_iterator o=obsList.begin(); o!=obsList.end(); o++)
+    curObs[o->first] = make_pair(o->second, target.getID());
+
+//cout << "traceStream::traceFullObservation() #contextAttrsMap="<<contextAttrsMap.size()<<", #obsList="<<obsList.size()<<", #obs="<<obs.size()<<endl;  
+  // Call emitObservations with the temporary context and observation records, which are separate from the
+  // ones that are maintained by this trace and record multiple separate observations for the same context
+  emitObservations(contextAttrsMap, curObs);
+
+#endif
 
 }
 

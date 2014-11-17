@@ -1069,10 +1069,10 @@ module::~module() {
 
     //subrata: register runtimeRegression
 
-     //modularApp::registerTraceStream(g, new runtimeRegression());
      cout << g.name() << endl;
      modularApp::moduleTrace[g]->registerObserver(new runtimeRegression());
-    // Add to the trace observation the properties of all of the module's outputs
+    
+     // Add to the trace observation the properties of all of the module's outputs
     for(int i=0; i<outs.size(); i++) {
       if(outs[i].ctxt==NULL) continue;
 
@@ -3443,6 +3443,7 @@ void runtimeRegression::observe(int traceID,
   cout << "ctxt="<<endl<<data2str(ctxt)<<endl;
   cout << "obs="<<endl<<data2str(obs)<<endl;
 
+  emitObservation(traceID,ctxt,obs,obsAnchor);
 #if 0
   // Determine which context and trace attributes are numeric and 
   // check that all observations have the same numeric context and trace dimensions
