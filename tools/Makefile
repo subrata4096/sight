@@ -1,4 +1,5 @@
 all: dtl callpath
+#all: dtl callpath pythondev
 
 dtl-1.17.tar.gz:
 	wget --no-check-certificate https://dtl-cpp.googlecode.com/files/dtl-1.17.tar.gz
@@ -71,6 +72,9 @@ callpath: adept-utils # callpath.tar.gz
 	cd callpath/src; make; make install
 
 #-DCALLPATH_HAVE_MPI=false 
-
+pythondev: 
+	wget https://www.python.org/ftp/python/2.7.6/Python-2.7.6.tgz
+	tar -xf Python-2.7.6.tgz
+	cd Python-2.7.6; ./configure --prefix=${ROOT_PATH}/tools/python-dev --enable-shared; make; make install
 clean:
 	rm -fr *.tar *.tar.gz *.tar.bz2 dtl adept-utils callpath boost_1_55_0

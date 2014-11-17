@@ -131,6 +131,8 @@ class group {
   // Returns the depth of the callstack
   int depth() const;
 
+  //Returns a string representation of the stack-trace
+  std::string getFullStack();
   bool operator==(const group& that) const
   { return stack == that.stack; }
 

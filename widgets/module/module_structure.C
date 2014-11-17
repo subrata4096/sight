@@ -6,6 +6,8 @@
 #include "module_common.h"
 #include "../trace/trace_structure.h"
 #include "../trace/trace_common.h"
+#include "../../sight_python.h"
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -3442,6 +3444,9 @@ void runtimeRegression::observe(int traceID,
   cout << "runtimeRegression::observe() this="<<this<<endl;
   cout << "ctxt="<<endl<<data2str(ctxt)<<endl;
   cout << "obs="<<endl<<data2str(obs)<<endl;
+
+  pythonEnv* pe = new pythonEnv();
+  pe->runPython();
 
   emitObservation(traceID,ctxt,obs,obsAnchor);
 #if 0
