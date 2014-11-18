@@ -1,6 +1,7 @@
 // Licence information included in file LICENCE
 #include "sight_common_internal.h"
 #include "sight_structure_internal.h"
+#include "sight_python.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -285,6 +286,10 @@ void SightInit(int argc, char** argv, string title, string workDir)
   // If Sight has been implicitly initialized in this thread, emit a warning since the parameters from explicit initialization are not being used
   if(initializedDebugThisThread) { cerr << "WARNING: Sight has been initialized multiple times within this thread!"<<endl; }
   SightInit_internal(argc, argv, title, workDir, true);
+
+#if RUNTIME_ANOMALY_DETECTION
+  pythonEnv::init();
+#endif  
 }
 
 // Provides the output directory and run title as well but does not provide enough info to rerun the application

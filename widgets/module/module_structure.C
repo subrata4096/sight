@@ -7,6 +7,7 @@
 #include "../trace/trace_structure.h"
 #include "../trace/trace_common.h"
 #include "../../sight_python.h"
+//#include "../sight_python_env.h"
 
 #include <fstream>
 #include <iostream>
@@ -189,6 +190,22 @@ const instance& group::getInst() const {
 // Returns the depth of the callstack
 int group::depth() const {
   return stack.size();
+}
+
+
+//returns a string representation of the groups stack
+std::string group::getStackName(std::string separator)
+{
+       ostringstream s;
+      // Stack of module instances that uniquely identifies this module grouping
+      std::list<instance>::const_iterator start = stack.begin(), end = stack.end();
+      for(;start != end; start++)
+      {
+          if(start!=stack.begin()) s << separator;
+	      
+	  s << start->name;
+      }
+      return s.str();
 }
 
 // Returns a human-readable string that describes this group
@@ -1071,8 +1088,11 @@ module::~module() {
 
     //subrata: register runtimeRegression
 
-     cout << g.name() << endl;
-     modularApp::moduleTrace[g]->registerObserver(new runtimeRegression());
+     cout << "++++++++++++++++++++++  " << g.getStackName("/") << endl;
+     std::string fullStackName = g.getStackName("/");
+     traceStream* thisTraceStream = modularApp::moduleTrace[g];
+     int tId = thisTraceStream->getTraceID();
+     thisTraceStream->registerObserver(new runtimeRegression(fullStackName, tId));
     
      // Add to the trace observation the properties of all of the module's outputs
     for(int i=0; i<outs.size(); i++) {
@@ -1094,7 +1114,8 @@ module::~module() {
 
     //Subrata: following is important
     // Record the observation into this module group's trace
-    modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
+    //modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
+    thisTraceStream->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
     /* GB 2014-01-24 - It makes sense to allow different instances of a module group to not provide
      *        the same outputs since in fault injection we may be aborted before all the outputs are 
@@ -3434,6 +3455,12 @@ std::string ModuleStreamRecord::str(std::string indent) const {
 //******************************************************
 //*********runtimeRegression**************************//
 //****************************************************//
+//
+runtimeRegression::runtimeRegression(std::string& fullStack, int trace_id)
+{
+	 stackCallpath = fullStack;
+	 pythonEnv::loadRegressionObjects(fullStack, trace_id);
+}
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
 void runtimeRegression::observe(int traceID,
@@ -3445,8 +3472,12 @@ void runtimeRegression::observe(int traceID,
   cout << "ctxt="<<endl<<data2str(ctxt)<<endl;
   cout << "obs="<<endl<<data2str(obs)<<endl;
 
+  /*
   pythonEnv* pe = new pythonEnv();
-  pe->runPython();
+  */
+  pythonEnv::runPython(ctxt,obs);
+  //sightPython::init();
+  //sightPython::pyEnv.runPython();
 
   emitObservation(traceID,ctxt,obs,obsAnchor);
 #if 0

@@ -37,7 +37,10 @@ class runtimeRegression : public common::traceObserver {
 	  private:
 		std::string workDir;
 		// we need to keep a map of a regressor for each observation
+		std::string stackCallpath;
+
 	  public:
+		runtimeRegression(std::string& fullStack, int trace_id);
 
   // Interface implemented by objects that listen for observations a traceStream reads. Such objects
   // call traceStream::registerObserver() to inform a given traceStream that it should observations.
@@ -131,8 +134,6 @@ class group {
   // Returns the depth of the callstack
   int depth() const;
 
-  //Returns a string representation of the stack-trace
-  std::string getFullStack();
   bool operator==(const group& that) const
   { return stack == that.stack; }
 
@@ -144,6 +145,8 @@ class group {
   // Returns whether the group's descriptor is empty, meaning that this object does not denote any specific group
   bool isNULL() const { return stack.size()==0; }
 
+  //returns a string representation of the groups stack
+  std::string getStackName(std::string separator);
   // Returns a human-readable string that describes this group
   std::string str() const;
 }; // class group

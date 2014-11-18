@@ -1,0 +1,5 @@
+#!/p/lscratchd/mitra3/my_sight_branch/sight/tools/python-dev/bin/python2.7
+
+import pydoc
+if __name__ == '__main__':
+    pydoc.cli()

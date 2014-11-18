@@ -30,7 +30,7 @@ SIGHT_LINKFLAGS = \
 		  ${ROOT_PATH}/tools/python-dev/lib/libpython2.7.a \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread \
-                  -Wl,--no-as-needed -ldl -lutil
+                  -Wl,--no-as-needed -ldl -lutil -lboost_python 
                   #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
 
 RAPL_ENABLED = 0
@@ -40,7 +40,8 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 
-SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=1
+SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=0
+#SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=1
 	                
 override CC=gcc
 override CCC=g++
