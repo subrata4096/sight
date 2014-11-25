@@ -3459,7 +3459,8 @@ std::string ModuleStreamRecord::str(std::string indent) const {
 runtimeRegression::runtimeRegression(std::string& fullStack, int trace_id)
 {
 	 stackCallpath = fullStack;
-	 pythonEnv::loadRegressionObjects(fullStack, trace_id);
+	 //pythonEnv::loadRegressionObjects(fullStack, trace_id);
+	 pythonEnv::recordStack(fullStack, trace_id);
 }
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
@@ -3475,7 +3476,7 @@ void runtimeRegression::observe(int traceID,
   /*
   pythonEnv* pe = new pythonEnv();
   */
-  pythonEnv::runPython(ctxt,obs);
+  pythonEnv::runPython(traceID,ctxt,obs);
   //sightPython::init();
   //sightPython::pyEnv.runPython();
 

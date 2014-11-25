@@ -40,8 +40,8 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 
-SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=0
-#SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=1
+#SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=0
+SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=1
 	                
 override CC=gcc
 override CCC=g++

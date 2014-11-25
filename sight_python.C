@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 //#include "Python.h"
 #include "sight_python.h"
 #include <boost/python.hpp>
@@ -7,9 +8,24 @@ using namespace boost::python;
 static object _sys;
 static object _regressModule;
 static object _runPyProg;
-static std::map<int,object> regressionObjMap;
+static object _runPypredictValue;
+static object _runPyLoadModel;
+//static std::map<int,object> regressionObjMap;
+static std::map<int,std::map<std::string,object> > regressionObjMap;
+static std::map<int,std::string> regressionStackMap;
 
 pythonEnv* pythonEnv::_pyEnv = 0;
+
+std::string GetEnv( const std::string & var ) {
+   const char * val = ::getenv( var.c_str() );
+   if ( val == 0 ) {
+         return "";
+   }
+   else {
+         return val;
+   }
+}
+
 pythonEnv::pythonEnv()
 {
 	std::cout << "creating pythonEnv" << std::endl;
@@ -25,6 +41,8 @@ pythonEnv::pythonEnv()
        _regressModule = import("regressModule");
 
        _runPyProg = _regressModule.attr("testTry");
+       _runPypredictValue = _regressModule.attr("predictValue");
+       _runPyLoadModel = _regressModule.attr("loadModel");
 
      } catch( error_already_set ) {
        PyErr_Print();
@@ -85,12 +103,16 @@ void pythonEnv::runPython()
 */
 
  
-void pythonEnv::runPython(const std::map<std::string, std::string>& ctxt,
+void pythonEnv::runPython(int trace_id, const std::map<std::string, std::string>& ctxt,
 		          const std::map<std::string, std::string>& obs)
 {
   if(_pyEnv)
   {
-    _runPyProg();
+    pythonEnv::handlePickleFiles(trace_id,obs);
+    //_runPyProg();
+    std::map<std::string, std::string> predictedObs;
+    pythonEnv::predictValues(trace_id, ctxt, predictedObs);
+    //pythonEnv::anomalyDetection(obs,predictedObs);
   }
   else
   {
@@ -98,11 +120,90 @@ void pythonEnv::runPython(const std::map<std::string, std::string>& ctxt,
   }
 }
 
+void pythonEnv::predictValues(int trace_id,const std::map<std::string, std::string>& ctxt, std::map<std::string, std::string>& predictedObs)
+{
+     	
+     std::map<int,std::map<std::string,object> > :: iterator tracePos = regressionObjMap.find(trace_id);
+     if(tracePos == regressionObjMap.end())
+     {
+	     return;
+     }
+     std::map<std::string,object> objectMap = tracePos->second;
+		
+     boost::python::list ctxtList = boost::python::list();
+     std::map<std::string,std::string> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
+     for(; ctxtStart != ctxtEnd; ctxtStart++)
+     {
+        ctxtList.append(ctxtStart->second);
+     }
+     std::map<std::string,object> :: iterator objectMapStart = objectMap.begin(), objectMapEnd = objectMap.end();
+     for(;objectMapStart != objectMapEnd; objectMapStart++)
+     {
+        _runPypredictValue(objectMapStart->second, ctxtList);
+     }
 
 
+
+}
+void pythonEnv::anomalyDetection(const std::map<std::string, std::string>& obs, std::map<std::string, std::string>& predictedObs)
+{
+   std::map<std::string, std::string> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
+   for(; obsStart != obsEnd; obsStart++)
+   {
+           std::map<std::string, std::string> :: iterator predictedPos = predictedObs.find(obsStart->first);
+	   if(predictedPos == predictedObs.end())
+	   {
+		   continue;
+	   }
+           float obsF = std::atof((obsStart->second).c_str());
+           float predictedObsF = std::atof((predictedPos->first).c_str());
+	   float error = (obsF - predictedObsF)/obsF;
+	   std::cout << "obs : " << predictedPos->first << "  error : " << error << std::endl; 
+    }
+}
+void pythonEnv::handlePickleFiles(int trace_id,const std::map<std::string, std::string>& obs)
+{
+	std::string locationPrefix = GetEnv("PICKLE_FILE_PREFIX");
+      if(locationPrefix != "")
+      {
+             locationPrefix += "/";
+      }
+      std::string stack = regressionStackMap[trace_id];
+      locationPrefix += stack;
+      std::map<std::string, std::string> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
+      for(; obsStart != obsEnd; obsStart++)
+      {
+	      std::string obsName = obsStart->first;
+      
+	      std::string fullFileLocation  = locationPrefix + "_" + obsName + ".pkl";
+        if(regressionObjMap.find(trace_id) == regressionObjMap.end())
+        {
+          pythonEnv::loadRegressionObjects(fullFileLocation, trace_id);
+        }
+      }
+}
+
+
+void pythonEnv::recordStack(std::string& stack, int trace_id)
+{
+   regressionStackMap[trace_id] = stack;
+}
 void pythonEnv::loadRegressionObjects(std::string& location, int trace_id)
 {
-    object obj;	
-    regressionObjMap[trace_id] = obj;         
+   object obj;	
+   //std::string filelocation = "/p/lscratchd/mitra3/my_sight_branch/sight/apps/CoEVP/CM/exec/back_dbg.CoEVP/html/widgets/module/data_individual/ModularApp/Constructive_model/TimeStep/Advance_module:measure:PAPI:PAPI_TOT_CYC.pkl";	
+   try{	
+    std::map<std::string, object> objMap;	
+    obj = _runPyLoadModel(location);
+    objMap[location] = obj;
+    regressionObjMap[trace_id] = objMap; 
+   }
+   catch(...)
+   {
+      // If an exception was thrown, translate it to Python
+      boost::python::handle_exception();
+      std::cout<<"an exception was thrown" << std::endl;
+      return;
+   }
 }
 
