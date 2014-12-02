@@ -26,10 +26,16 @@ std::string GetEnv( const std::string & var ) {
    }
 }
 
+std::string pythonEnv::locationPrefix = "";
+
 pythonEnv::pythonEnv()
 {
 	std::cout << "creating pythonEnv" << std::endl;
-
+	pythonEnv::locationPrefix = GetEnv("PICKLE_FILE_PREFIX");
+	if(pythonEnv::locationPrefix != "")
+        {
+             pythonEnv::locationPrefix += "/";
+        }
 
             try {
                     Py_Initialize();
@@ -42,7 +48,8 @@ pythonEnv::pythonEnv()
 
        _runPyProg = _regressModule.attr("testTry");
        _runPypredictValue = _regressModule.attr("predictValue");
-       _runPyLoadModel = _regressModule.attr("loadModel");
+       //_runPyLoadModel = _regressModule.attr("loadModel");
+       _runPyLoadModel = _regressModule.attr("printModule");
 
      } catch( error_already_set ) {
        PyErr_Print();
@@ -110,9 +117,9 @@ void pythonEnv::runPython(int trace_id, const std::map<std::string, std::string>
   {
     pythonEnv::handlePickleFiles(trace_id,obs);
     //_runPyProg();
-    std::map<std::string, std::string> predictedObs;
+    std::map<std::string, double> predictedObs;
     pythonEnv::predictValues(trace_id, ctxt, predictedObs);
-    //pythonEnv::anomalyDetection(obs,predictedObs);
+    pythonEnv::anomalyDetection(obs,predictedObs);
   }
   else
   {
@@ -120,9 +127,10 @@ void pythonEnv::runPython(int trace_id, const std::map<std::string, std::string>
   }
 }
 
-void pythonEnv::predictValues(int trace_id,const std::map<std::string, std::string>& ctxt, std::map<std::string, std::string>& predictedObs)
+void pythonEnv::predictValues(int trace_id,const std::map<std::string, std::string>& ctxt, std::map<std::string, double>& predictedObs)
 {
-     	
+   try
+   {  	
      std::map<int,std::map<std::string,object> > :: iterator tracePos = regressionObjMap.find(trace_id);
      if(tracePos == regressionObjMap.end())
      {
@@ -134,51 +142,52 @@ void pythonEnv::predictValues(int trace_id,const std::map<std::string, std::stri
      std::map<std::string,std::string> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
      for(; ctxtStart != ctxtEnd; ctxtStart++)
      {
-        ctxtList.append(ctxtStart->second);
+	     
+        ctxtList.append(std::atof((ctxtStart->second).c_str()));
      }
      std::map<std::string,object> :: iterator objectMapStart = objectMap.begin(), objectMapEnd = objectMap.end();
      for(;objectMapStart != objectMapEnd; objectMapStart++)
      {
-        _runPypredictValue(objectMapStart->second, ctxtList);
+        predictedObs[objectMapStart->first] = boost::python::extract<double>(_runPypredictValue(objectMapStart->second, ctxtList));
      }
-
-
+   }
+     catch(...)
+   {
+      // If an exception was thrown, translate it to Python
+      boost::python::handle_exception();
+      std::cout<<"During prediction: an exception was thrown" << std::endl;
+      return;
+   }
 
 }
-void pythonEnv::anomalyDetection(const std::map<std::string, std::string>& obs, std::map<std::string, std::string>& predictedObs)
+void pythonEnv::anomalyDetection(const std::map<std::string, std::string>& obs, std::map<std::string, double>& predictedObs)
 {
    std::map<std::string, std::string> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
    for(; obsStart != obsEnd; obsStart++)
    {
-           std::map<std::string, std::string> :: iterator predictedPos = predictedObs.find(obsStart->first);
+           std::map<std::string, double> :: iterator predictedPos = predictedObs.find(obsStart->first);
 	   if(predictedPos == predictedObs.end())
 	   {
 		   continue;
 	   }
-           float obsF = std::atof((obsStart->second).c_str());
-           float predictedObsF = std::atof((predictedPos->first).c_str());
-	   float error = (obsF - predictedObsF)/obsF;
+           double obsF = std::atof((obsStart->second).c_str());
+           //float predictedObsF = std::atof((predictedPos->first).c_str());
+           double predictedObsF = std::atof((predictedPos->first).c_str());
+	   double error = (obsF - predictedObsF)/obsF;
 	   std::cout << "obs : " << predictedPos->first << "  error : " << error << std::endl; 
     }
 }
 void pythonEnv::handlePickleFiles(int trace_id,const std::map<std::string, std::string>& obs)
 {
-	std::string locationPrefix = GetEnv("PICKLE_FILE_PREFIX");
-      if(locationPrefix != "")
-      {
-             locationPrefix += "/";
-      }
-      std::string stack = regressionStackMap[trace_id];
-      locationPrefix += stack;
+      //std::string stack = regressionStackMap[trace_id];
       std::map<std::string, std::string> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
       for(; obsStart != obsEnd; obsStart++)
       {
-	      std::string obsName = obsStart->first;
+	std::string obsName = obsStart->first;
       
-	      std::string fullFileLocation  = locationPrefix + "_" + obsName + ".pkl";
         if(regressionObjMap.find(trace_id) == regressionObjMap.end())
         {
-          pythonEnv::loadRegressionObjects(fullFileLocation, trace_id);
+          pythonEnv::loadRegressionObjects(obsName, trace_id);
         }
       }
 }
@@ -188,21 +197,24 @@ void pythonEnv::recordStack(std::string& stack, int trace_id)
 {
    regressionStackMap[trace_id] = stack;
 }
-void pythonEnv::loadRegressionObjects(std::string& location, int trace_id)
+void pythonEnv::loadRegressionObjects(std::string& obsName, int trace_id)
 {
    object obj;	
+   std::string fileLoc = locationPrefix + regressionStackMap[trace_id];
+   //std::string fullFileLocation  = locationPrefix + "_" + obsName + ".pkl";
+   std::string fullFileLocation  = fileLoc + "_" + obsName + ".cpkl";
    //std::string filelocation = "/p/lscratchd/mitra3/my_sight_branch/sight/apps/CoEVP/CM/exec/back_dbg.CoEVP/html/widgets/module/data_individual/ModularApp/Constructive_model/TimeStep/Advance_module:measure:PAPI:PAPI_TOT_CYC.pkl";	
    try{	
     std::map<std::string, object> objMap;	
-    obj = _runPyLoadModel(location);
-    objMap[location] = obj;
+    obj = _runPyLoadModel(fullFileLocation);
+    objMap[obsName] = obj;
     regressionObjMap[trace_id] = objMap; 
    }
    catch(...)
    {
       // If an exception was thrown, translate it to Python
       boost::python::handle_exception();
-      std::cout<<"an exception was thrown" << std::endl;
+      std::cout<<"an exception was thrown during loading of: " << fullFileLocation << std::endl;
       return;
    }
 }

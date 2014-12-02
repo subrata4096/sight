@@ -12,6 +12,8 @@ class pythonEnv
 		object* _regressModule;
 		object* _runPyProg;
 		*/
+	public:
+	        static std::string locationPrefix;
 	private:
 		static pythonEnv* _pyEnv;
 	public:
@@ -21,10 +23,10 @@ class pythonEnv
 	static void exit();
 	static void runPython(int trace_id, const std::map<std::string, std::string>& ctxt,
 			                          const std::map<std::string, std::string>& obs);
-	static void loadRegressionObjects(std::string& location, int trace_id);
+	static void loadRegressionObjects(std::string& obsName, int trace_id);
 	static void recordStack(std::string& stack, int trace_id);
-	static void predictValues(int trace_id,const std::map<std::string, std::string>& ctxt, std::map<std::string, std::string>& predictedObs);
+	static void predictValues(int trace_id,const std::map<std::string, std::string>& ctxt, std::map<std::string, double>& predictedObs);
 	static void handlePickleFiles(int trace_id,const std::map<std::string, std::string>& obs);
 	static void anomalyDetection(const std::map<std::string, std::string>& obs, 
-			         std::map<std::string, std::string>& predictedObs);
+			         std::map<std::string, double>& predictedObs);
 };
