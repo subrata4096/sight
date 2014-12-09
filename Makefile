@@ -6,6 +6,8 @@ SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o varian
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 SIGHT_PYTHON_O := sight_python.o
 SIGHT_PYTHON_H := sight_python.h
+SIGHT_ANALYSIS_THREAD_O := sight_analysis_thread.o
+SIGHT_ANALYSIS_THREAD_H := sight_analysis_thread.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
@@ -192,8 +194,8 @@ hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.so
 libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
-libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} ${SIGHT_PYTHON_O} ${SIGHT_PYTHON_H} widgets_pre
-	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} ${SIGHT_PYTHON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/box/box_api_cpp.o widgets/box/box_merge.o widgets/*/*_common.o #-Ltools/python-dev/lib -lpython2.7
+libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} ${SIGHT_ANALYSIS_THREAD_O} ${SIGHT_ANALYSIS_THREAD_H} ${SIGHT_PYTHON_O} ${SIGHT_PYTHON_H} widgets_pre
+	${CC} -fPIC -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} ${SIGHT_ANALYSIS_THREAD_O} ${SIGHT_PYTHON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/box/box_api_cpp.o widgets/box/box_merge.o widgets/*/*_common.o #-Ltools/python-dev/lib -lpython2.7
 
 #libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
@@ -242,6 +244,8 @@ attributes/attributes_layout.o: attributes/attributes_layout.C attributes/attrib
 sight_python.o: sight_python.C sight_python.h
 	        ${CCC} ${SIGHT_CFLAGS} -I. -I./tools/python-dev/include/python2.7 sight_python.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_python.o
 
+sight_analysis_thread.o: sight_analysis_thread.C sight_analysis_thread.h
+	        ${CCC} ${SIGHT_CFLAGS} -I. sight_analysis_thread.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_analysis_thread.o
 
 # Rule for compiling the aspects of widgets that libsight.a requires
 .PHONY: widgets_pre

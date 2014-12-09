@@ -1,8 +1,45 @@
 #include <iostream>
 #include <string>
+#include <boost/python.hpp>
 //#include "Python.h"
 #include "sight_python.h"
-#include <boost/python.hpp>
+#include "sight_analysis_thread.h"
+
+extern runTimeInformation* activeRunTimeInfo;
+///* analysis thread */
+extern pthread_t thread;
+extern ThreadData threadData;
+
+runTimeInformation::runTimeInformation()
+{
+	this->active_trace_id = -999;
+}
+runTimeInformation::~runTimeInformation()
+{
+	this->active_ctxt.clear();
+	this->active_obs.clear();
+}
+
+void runTimeInformation::update(int trace_id, const std::map<std::string, std::string>& ctxt,
+		                                    const std::map<std::string, std::string>& obs)
+{
+//mutex lock
+	this->active_ctxt.clear();
+	this->active_obs.clear();
+        std::map<std::string,std::string> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
+        for(; ctxtStart != ctxtEnd; ctxtStart++)
+        {
+
+          this->active_ctxt[ctxtStart->first] = std::atof((ctxtStart->second).c_str());
+        }
+        std::map<std::string,std::string> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
+        for(;obsStart != obsEnd; obsStart++)
+        {
+          this->active_obs[obsStart->first] = std::atof((obsStart->second).c_str());
+        }
+//end mutex lock
+}
+
 
 using namespace boost::python;
 static object _sys;
@@ -64,6 +101,11 @@ pythonEnv::~pythonEnv()
 void pythonEnv::init()
 {
    _pyEnv = new pythonEnv();
+   //initialize the following global variable
+   activeRunTimeInfo = new runTimeInformation();
+
+   // Init analysis thread
+   initAnalysisThread(&thread, &threadData);
 }
 void pythonEnv::exit()
 {
@@ -109,17 +151,33 @@ void pythonEnv::runPython()
 }
 */
 
- 
+void pythonEnv::signalCondition()
+{
+  //assert(pthread_mutex_lock(threadData.mutex) == 0);
+  pthread_cond_signal(threadData.condition);
+  //assert(pthread_mutex_unlock(threadData.mutex) == 0);
+}
+
 void pythonEnv::runPython(int trace_id, const std::map<std::string, std::string>& ctxt,
 		          const std::map<std::string, std::string>& obs)
 {
   if(_pyEnv)
   {
-    pythonEnv::handlePickleFiles(trace_id,obs);
+    //update the info about current runtime. Based on this another "analysisThread" will work in parallel
+    
+    assert(pthread_mutex_lock(threadData.mutex) == 0); // Acquire lock
+    
+    activeRunTimeInfo->update(trace_id,ctxt,obs);
+    
+    assert(pthread_mutex_unlock(threadData.mutex) == 0); // Release lock 
+ 
+    signalCondition();
+
+    //pythonEnv::handlePickleFiles(trace_id,obs);
     //_runPyProg();
-    std::map<std::string, double> predictedObs;
-    pythonEnv::predictValues(trace_id, ctxt, predictedObs);
-    pythonEnv::anomalyDetection(obs,predictedObs);
+    //std::map<std::string, double> predictedObs;
+    //pythonEnv::predictValues(trace_id, ctxt, predictedObs);
+    //pythonEnv::anomalyDetection(obs,predictedObs);
   }
   else
   {
@@ -127,7 +185,7 @@ void pythonEnv::runPython(int trace_id, const std::map<std::string, std::string>
   }
 }
 
-void pythonEnv::predictValues(int trace_id,const std::map<std::string, std::string>& ctxt, std::map<std::string, double>& predictedObs)
+void pythonEnv::predictValues(int trace_id,const std::map<std::string, float>& ctxt, std::map<std::string, float>& predictedObs)
 {
    try
    {  	
@@ -139,16 +197,17 @@ void pythonEnv::predictValues(int trace_id,const std::map<std::string, std::stri
      std::map<std::string,object> objectMap = tracePos->second;
 		
      boost::python::list ctxtList = boost::python::list();
-     std::map<std::string,std::string> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
+     std::map<std::string,float> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
      for(; ctxtStart != ctxtEnd; ctxtStart++)
      {
 	     
-        ctxtList.append(std::atof((ctxtStart->second).c_str()));
+        //ctxtList.append(std::atof((ctxtStart->second).c_str()));
+        ctxtList.append(ctxtStart->second);
      }
      std::map<std::string,object> :: iterator objectMapStart = objectMap.begin(), objectMapEnd = objectMap.end();
      for(;objectMapStart != objectMapEnd; objectMapStart++)
      {
-        predictedObs[objectMapStart->first] = boost::python::extract<double>(_runPypredictValue(objectMapStart->second, ctxtList));
+        predictedObs[objectMapStart->first] = boost::python::extract<float>(_runPypredictValue(objectMapStart->second, ctxtList));
      }
    }
      catch(...)
@@ -160,27 +219,28 @@ void pythonEnv::predictValues(int trace_id,const std::map<std::string, std::stri
    }
 
 }
-void pythonEnv::anomalyDetection(const std::map<std::string, std::string>& obs, std::map<std::string, double>& predictedObs)
+void pythonEnv::anomalyDetection(const std::map<std::string, float>& obs, std::map<std::string, float>& predictedObs)
 {
-   std::map<std::string, std::string> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
+   std::map<std::string, float> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
    for(; obsStart != obsEnd; obsStart++)
    {
-           std::map<std::string, double> :: iterator predictedPos = predictedObs.find(obsStart->first);
+           std::map<std::string, float> :: iterator predictedPos = predictedObs.find(obsStart->first);
 	   if(predictedPos == predictedObs.end())
 	   {
 		   continue;
 	   }
-           double obsF = std::atof((obsStart->second).c_str());
+           //float obsF = std::atof((obsStart->second).c_str());
+           float obsF = obsStart->second;
            //float predictedObsF = std::atof((predictedPos->first).c_str());
-           double predictedObsF = std::atof((predictedPos->first).c_str());
-	   double error = (obsF - predictedObsF)/obsF;
+           float predictedObsF = std::atof((predictedPos->first).c_str());
+	   float error = (obsF - predictedObsF)/obsF;
 	   std::cout << "obs : " << predictedPos->first << "  error : " << error << std::endl; 
     }
 }
-void pythonEnv::handlePickleFiles(int trace_id,const std::map<std::string, std::string>& obs)
+void pythonEnv::handlePickleFiles(int trace_id,const std::map<std::string, float>& obs)
 {
       //std::string stack = regressionStackMap[trace_id];
-      std::map<std::string, std::string> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
+      std::map<std::string, float> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
       for(; obsStart != obsEnd; obsStart++)
       {
 	std::string obsName = obsStart->first;
@@ -197,6 +257,7 @@ void pythonEnv::recordStack(std::string& stack, int trace_id)
 {
    regressionStackMap[trace_id] = stack;
 }
+
 void pythonEnv::loadRegressionObjects(std::string& obsName, int trace_id)
 {
    object obj;	
