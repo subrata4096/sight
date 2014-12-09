@@ -26,6 +26,9 @@ void runTimeInformation::update(int trace_id, const std::map<std::string, std::s
 //mutex lock
 	this->active_ctxt.clear();
 	this->active_obs.clear();
+
+	this->active_trace_id = trace_id;
+
         std::map<std::string,std::string> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
         for(; ctxtStart != ctxtEnd; ctxtStart++)
         {
@@ -37,6 +40,8 @@ void runTimeInformation::update(int trace_id, const std::map<std::string, std::s
         {
           this->active_obs[obsStart->first] = std::atof((obsStart->second).c_str());
         }
+
+	std::cout << "In update thread: " << "trace id: " << trace_id << "\n" << this->active_obs["module:measure:PAPI:PAPI_TOT_CYC"] << std::endl;
 //end mutex lock
 }
 

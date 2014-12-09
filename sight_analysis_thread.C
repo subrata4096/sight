@@ -28,17 +28,21 @@ void * analysisThread(void* param)
   std::cout << "Analysis thread started" <<std::endl;
   while(1)
   {
-          int ret  = pthread_cond_wait(threadData->condition,threadData->mutex);
 
           
+	  //assert(pthread_mutex_lock(threadData->mutex) == 0); // Acquire lock
 	  assert(pthread_mutex_lock(threadData->mutex) == 0); // Acquire lock
+          
+	  int ret  = pthread_cond_wait(threadData->condition,threadData->mutex);
           
           int current_trace_id = activeRunTimeInfo->active_trace_id;
           std::map<std::string, float> current_ctxt = activeRunTimeInfo->active_ctxt;
           std::map<std::string, float> current_obs = activeRunTimeInfo->active_obs;
        
 	  assert(pthread_mutex_unlock(threadData->mutex) == 0); // Release lock
-           
+          
+	  std::cout << "From analysis thread: " << "trace id: " << current_trace_id << "\n" << current_obs["module:measure:PAPI:PAPI_TOT_CYC"] << std::endl;
+
           pythonEnv::handlePickleFiles(current_trace_id,current_obs);
           std::map<std::string, float> predictedObs;
           pythonEnv::predictValues(current_trace_id, current_ctxt, predictedObs);
