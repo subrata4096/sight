@@ -51,9 +51,15 @@ static object _sys;
 static object _regressModule;
 static object _runPyProg;
 static object _runPypredictValue;
+static object _runPygetValidRangeOfValuesWithErrorAdjustmentcreateDataPoint;
 static object _runPyLoadModel;
+static object _runPyLoadAnomalyDetectionEngine;
+
+
+static object ADE;
 //static std::map<int,object> regressionObjMap;
-static std::map<int,std::map<std::string,object> > regressionObjMap;
+//static std::map<int,std::map<std::string,object> > regressionObjMap;
+static std::map<int,object> regressionObjMap;
 static std::map<int,std::string> regressionStackMap;
 
 pythonEnv* pythonEnv::_pyEnv = 0;
@@ -90,15 +96,54 @@ pythonEnv::pythonEnv()
 
        _runPyProg = _regressModule.attr("testTry");
        _runPypredictValue = _regressModule.attr("predictValue");
+       _runPygetValidRangeOfValuesWithErrorAdjustmentcreateDataPoint = _regressModule.attr("getValidRangeOfValuesWithErrorAdjustment");
        //_runPyLoadModel = _regressModule.attr("loadModel");
        _runPyLoadModel = _regressModule.attr("printModule");
-
+       _runPyLoadAnomalyDetectionEngine = _regressModule.attr("loadAnomalyDetectionEngine");
+       pythonEnv::loadAnomalyDetectionEngine(pythonEnv::locationPrefix);
      } catch( error_already_set ) {
        PyErr_Print();
     }
  
 }
 
+void pythonEnv::loadAnomalyDetectionEngine(std::string& a)
+{
+	try{
+         //load the Anomaly Detection Engine
+	 ADE = _runPyLoadAnomalyDetectionEngine(pythonEnv::locationPrefix);
+	}
+	catch( ...)
+	{
+		std::cout << "\n ERROR: could not load anomaly detection engine " << std::endl; 
+	}
+}
+
+static object getAnomalyDetectionObject(std::string& fileName)
+{
+      object aDetectObj = ADE.attr("getAnomalyDetectionObject")(fileName);
+      return aDetectObj;	
+}
+
+static void getValidRangeOfValues(const std::map<std::string,float> & ctxt,
+                                 object& anoDetectObj,std::string& targetName,std::pair<float,float>& valRange)
+{
+  boost::python::dict ctxtDict = boost::python::dict();
+  std::map<std::string,float> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
+  for(; ctxtStart != ctxtEnd; ctxtStart++)
+  {
+
+        //ctxtList.append(std::atof((ctxtStart->second).c_str()));
+        ctxtDict[ctxtStart->first] = ctxtStart->second;
+  }	
+  boost::python::tuple rangeTuple = boost::python::extract<boost::python::tuple>(_runPygetValidRangeOfValuesWithErrorAdjustmentcreateDataPoint(ctxtDict,anoDetectObj,targetName));
+  float lowerRange = boost::python::extract<float>(rangeTuple[0]);
+  float uperRange = boost::python::extract<float>(rangeTuple[1]);
+
+  valRange = std::make_pair(lowerRange,uperRange);
+  return;
+   
+}
 pythonEnv::~pythonEnv()
 {
   Py_Finalize();
@@ -190,17 +235,22 @@ void pythonEnv::runPython(int trace_id, const std::map<std::string, std::string>
   }
 }
 
-void pythonEnv::predictValues(int trace_id,const std::map<std::string, float>& ctxt, std::map<std::string, float>& predictedObs)
+void pythonEnv::predictValues(int trace_id,const std::map<std::string, float>& ctxt, const std::map<std::string, float>& obs, std::map<std::string, std::pair<float,float> >& predictedObs)
 {
+   //std::map<std::string,float> dtPt;
+   //dtPt["A"] = 1.0;
+   //dtPt["ABC"] = 1.98;
+   //dtPt["ADD"] = 0.023;
+
    try
    {  	
-     std::map<int,std::map<std::string,object> > :: iterator tracePos = regressionObjMap.find(trace_id);
+     std::map<int,object> :: iterator tracePos = regressionObjMap.find(trace_id);
      if(tracePos == regressionObjMap.end())
      {
 	     return;
      }
-     std::map<std::string,object> objectMap = tracePos->second;
-		
+     object anomalyDetectObject = tracePos->second;
+     #if 0
      boost::python::list ctxtList = boost::python::list();
      std::map<std::string,float> :: const_iterator ctxtStart = ctxt.begin(), ctxtEnd = ctxt.end();
      for(; ctxtStart != ctxtEnd; ctxtStart++)
@@ -212,7 +262,21 @@ void pythonEnv::predictValues(int trace_id,const std::map<std::string, float>& c
      std::map<std::string,object> :: iterator objectMapStart = objectMap.begin(), objectMapEnd = objectMap.end();
      for(;objectMapStart != objectMapEnd; objectMapStart++)
      {
-        predictedObs[objectMapStart->first] = boost::python::extract<float>(_runPypredictValue(objectMapStart->second, ctxtList));
+        //predictedObs[objectMapStart->first] = boost::python::extract<float>(_runPypredictValue(objectMapStart->second, ctxtList));
+	float lowerRange = -999;
+	float upperRange = -999;
+        pythonEnv::getValidRangeOfValues(ctxt,anomalyObject,lowerRange,upperRange);
+	//predictedObs[objectMapStart->first] = boost::python::extract<float>(_runPypredictValue(objectMapStart->second, ctxtList));
+     }
+     #endif
+     std::map<std::string,float> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
+     for(;obsStart != obsEnd; obsStart++)
+     {
+        //predictedObs[objectMapStart->first] = boost::python::extract<float>(_runPypredictValue(objectMapStart->second, ctxtList));
+        std::pair <float,float> valueRange;
+        std::string targetName = obsStart->first;	
+        getValidRangeOfValues(ctxt,anomalyDetectObject,targetName,valueRange);
+        predictedObs[obsStart->first] = valueRange;
      }
    }
      catch(...)
@@ -224,8 +288,9 @@ void pythonEnv::predictValues(int trace_id,const std::map<std::string, float>& c
    }
 
 }
-void pythonEnv::anomalyDetection(const std::map<std::string, float>& obs, std::map<std::string, float>& predictedObs)
+void pythonEnv::anomalyDetection(const std::map<std::string, float>& obs, std::map<std::string, std::pair<float,float> >& predictedObs)
 {
+#if 0
    std::map<std::string, float> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
    for(; obsStart != obsEnd; obsStart++)
    {
@@ -241,9 +306,25 @@ void pythonEnv::anomalyDetection(const std::map<std::string, float>& obs, std::m
 	   float error = (obsF - predictedObsF)/obsF;
 	   std::cout << "obs : " << predictedPos->first << "  error : " << error << std::endl; 
     }
+#endif
+   std::map<std::string, float> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
+   for(; obsStart != obsEnd; obsStart++)
+   {
+           std::map<std::string, std::pair<float,float> > :: iterator predictedPos = predictedObs.find(obsStart->first);
+           if(predictedPos == predictedObs.end())
+           {
+                   continue;
+           }
+           std::cout << "\n actual and predicted values:" << obsStart->second <<" --- " << (predictedPos->second).first << " , " << (predictedPos->second).second << std::endl; 
+           if(!((obsStart->second >= (predictedPos->second).first) && (obsStart->second <= (predictedPos->second).second)))
+	   {
+               std::cout <<"\n\n\n THERE is an anomaly!! \n";
+           }
+   }
 }
-void pythonEnv::handlePickleFiles(int trace_id,const std::map<std::string, float>& obs)
+void pythonEnv::handlePickleFiles(int trace_id/*,const std::map<std::string, float>& obs*/)
 {
+      #if 0
       //std::string stack = regressionStackMap[trace_id];
       std::map<std::string, float> :: const_iterator obsStart = obs.begin(), obsEnd = obs.end();
       for(; obsStart != obsEnd; obsStart++)
@@ -255,6 +336,11 @@ void pythonEnv::handlePickleFiles(int trace_id,const std::map<std::string, float
           pythonEnv::loadRegressionObjects(obsName, trace_id);
         }
       }
+      #endif
+      if(regressionObjMap.find(trace_id) == regressionObjMap.end())
+        {
+          pythonEnv::loadRegressionObjects(trace_id);
+        }
 }
 
 
@@ -263,11 +349,14 @@ void pythonEnv::recordStack(std::string& stack, int trace_id)
    regressionStackMap[trace_id] = stack;
 }
 
-void pythonEnv::loadRegressionObjects(std::string& obsName, int trace_id)
+void pythonEnv::loadRegressionObjects(/*std::string& obsName,*/ int trace_id)
 {
+   //std::cout << "\n--> OBSERVATION NAME : " << obsName << " trace id : " << trace_id << std::endl;	
+	
    object obj;	
-   std::string fileLoc = locationPrefix + regressionStackMap[trace_id];
-   //std::string fullFileLocation  = locationPrefix + "_" + obsName + ".pkl";
+   //std::string fileLoc = locationPrefix + regressionStackMap[trace_id];
+   std::string fileName = regressionStackMap[trace_id];
+   #if 0
    std::string fullFileLocation  = fileLoc + "_" + obsName + ".cpkl";
    //std::string filelocation = "/p/lscratchd/mitra3/my_sight_branch/sight/apps/CoEVP/CM/exec/back_dbg.CoEVP/html/widgets/module/data_individual/ModularApp/Constructive_model/TimeStep/Advance_module:measure:PAPI:PAPI_TOT_CYC.pkl";	
    try{	
@@ -279,6 +368,21 @@ void pythonEnv::loadRegressionObjects(std::string& obsName, int trace_id)
    catch(...)
    {
       // If an exception was thrown, translate it to Python
+      boost::python::handle_exception();
+      std::cout<<"an exception was thrown during loading of: " << fullFileLocation << std::endl;
+      return;
+   }
+   #endif
+   //std::string fullFileLocation  = locationPrefix + "_" + obsName + ".tsv";
+   std::string fullFileLocation  = fileName + ".tsv";
+   std::cout << "\nloadRegressionObjects: fileName = " << fullFileLocation << std::endl; 
+   try{
+       obj = getAnomalyDetectionObject(fullFileLocation);
+       regressionObjMap[trace_id] = obj;
+   }
+   catch(...)
+   {
+       // If an exception was thrown, translate it to Python
       boost::python::handle_exception();
       std::cout<<"an exception was thrown during loading of: " << fullFileLocation << std::endl;
       return;

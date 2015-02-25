@@ -4,6 +4,13 @@ import numpy as np
 
 import sys
 import cPickle
+
+from errorDatastructure import *
+from errorAnalysis import *
+from pickleDump import *
+from fields import *
+from detectAnomaly import *
+
 #import pickle
 def testTry():
 	print "I am in testTry"
@@ -23,7 +30,7 @@ def printModule(loc):
         #predictValue(m,inArr)	
 
 def loadModel(pklFName):
-	print "loding: " , pklFName
+	print "loading: " , pklFName
 	with open(pklFName, 'rb') as fid:
 		print fid
 		#l = fid.readline()
@@ -44,6 +51,25 @@ def predictValue(regressor, inputArr):
 	#except e:
 	#	print e
 		return predictedVal
+
+def loadAnomalyDetectionEngine(dumpDir):
+	setGlobalObject("activeDumpDirectory",dumpDir)
+	anoDetectEngine = anomalyDetectionEngine()
+        anoDetectEngine.dumpDirectory = dumpDir
+        anoDetectEngine.loadPerModuleObjects()
+	return anoDetectEngine
+
+def createDataPoint(prodDataPointMap):
+	print "\n\n In createDataPoint: ", str(prodDataPointMap)
+	fDpt = FeatureDataPoint(prodDataPointMap)
+	return fDpt
+
+def getValidRangeOfValuesWithErrorAdjustment(prodDataPointMap,anomalyDetectObject,targetName):
+	print "\n\n In createDataPoint: ", str(prodDataPointMap)
+	fDpt = FeatureDataPoint(prodDataPointMap)
+	rangeOfVal = anomalyDetectObject.getValidRangeOfTargetValue(targetName,fDpt)
+	return rangeOfVal
+
 
 if __name__ == "__main__" :
 	fname = sys.argv[1]

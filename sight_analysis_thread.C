@@ -43,9 +43,10 @@ void * analysisThread(void* param)
           
 	  std::cout << "From analysis thread: " << "trace id: " << current_trace_id << "\n" << current_obs["module:measure:PAPI:PAPI_TOT_CYC"] << std::endl;
 
-          pythonEnv::handlePickleFiles(current_trace_id,current_obs);
-          std::map<std::string, float> predictedObs;
-          pythonEnv::predictValues(current_trace_id, current_ctxt, predictedObs);
+          //pythonEnv::handlePickleFiles(current_trace_id,current_obs);
+          pythonEnv::handlePickleFiles(current_trace_id);
+          std::map<std::string, std::pair<float,float> > predictedObs;
+          pythonEnv::predictValues(current_trace_id, current_ctxt,current_obs, predictedObs);
           pythonEnv::anomalyDetection(current_obs,predictedObs); 
 	   
 
