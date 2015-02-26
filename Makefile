@@ -42,8 +42,8 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 
-#SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=0
-SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=1
+SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=0
+#SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=1
 	                
 override CC=gcc
 override CCC=g++
@@ -137,6 +137,9 @@ CoEVP:
 
 lulesh:
 	cd apps/lulesh;make ${MAKE_DEFINES} all
+
+MATRIX_MULTIPLY:
+	cd apps/MATRIX_MULTIPLY; make ${MAKE_DEFINES} mm
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)
