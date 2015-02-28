@@ -43,5 +43,10 @@ std::pair<std::string, std::string> path2filedir(std::string s);
 // If isDir is true, s is a directory. Otherwise, it is a file and thus, we need to create its parent directory.
 int mkpath(std::string s, mode_t mode, bool isDir=true);
 
+// process_mem_usage(double &, double &) - takes two doubles by reference,
+// // attempts to read the system-dependent data for a process' virtual memory
+// // size and resident set size, and return the results in KB.
+void process_mem_usage(double& vm_usage, double& resident_set);
+
 } // namespace sight
 

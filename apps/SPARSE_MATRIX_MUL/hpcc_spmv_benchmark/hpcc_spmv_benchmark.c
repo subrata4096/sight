@@ -282,7 +282,9 @@ int hpcc_spmv_benchmark(hpcc_spmv_params* bench_params, int write_to_files, int 
   /* determine timer granularity */
   timergranularity = find_timer_granularity(&dummy);
   {
-  module coreSPMVModule(instance("core_spmv", 1, 0),
+  double vm1, rss1,vm2,rss2,rssUsage,vmUsage;
+  process_mem_usage(vm1, rss1);
+  module coreSPMVModule(instance("core_spmv", 1, 1),
                      inputs(port(context("probDimension",  bench_params->maxdim,  sight::common::module::notes(sight::common::module::publicized())))),
                      getMeasures() );
   /* print runtime estimate */
@@ -387,6 +389,11 @@ int hpcc_spmv_benchmark(hpcc_spmv_params* bench_params, int write_to_files, int 
 
   time2 = get_seconds();
   bench_params->actual_runtime = time2 - time1;
+
+  process_mem_usage(vm2, rss2);
+  rssUsage = rss2 - rss1;
+  vmUsage = vm2 - vm1;
+  coreSPMVModule.setOutCtxt(0, context("rssUsage", rssUsage, "vmUsage", vmUsage));
   }
   /* fill in tests that weren't done using interpolation and write
      resulting data to output file */

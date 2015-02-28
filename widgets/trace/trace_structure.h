@@ -539,7 +539,9 @@ typedef common::easyvector<int> papiEvents;
 #define PAPI_L1_IC_MR 6 // L1 Instruction cache miss rate
 #define PAPI_L2_IC_MR 7 // L2 Instruction cache miss rate
 #define PAPI_L3_IC_MR 8 // L3 Instruction cache miss rate
-#define PAPI_MAX_DERIVED 8 // The maximum value of any derived counter
+#define PAPI_MIPS 9 // MIPS
+#define PAPI_MFLOPS 10 // MFLOPS
+#define PAPI_MAX_DERIVED 10 // The maximum value of any derived counter
 
 class PAPIMeasure : public measure {
   // Counts the total number of counter events observed so far, accounting for any pauses and resumes

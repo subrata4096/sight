@@ -17,7 +17,9 @@ namedMeasures getMeasures()
                               "RAPL", new RAPLMeasure()
 #else
                               "time", new timeMeasure(),
-                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_DCM))
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_L1_DCM,PAPI_TOT_INS,PAPI_MFLOPS))
+                              //"PAPI", new PAPIMeasure(papiEvents(PAPI_L1_DCM,PAPI_TOT_INS,PAPI_MIPS))
+                              //"PAPI", new PAPIMeasure(papiEvents(PAPI_L2_DC_MR))
                               //"PAPI", new PAPIMeasure(papiEvents(PAPI_LD_INS))
 #endif
                              );
@@ -49,6 +51,9 @@ int main(int argc, char* argv[])
 	outDir << "dbg.MATRIX_MULTIPLY_" << dim1 << "_" << dim2 << "_" << dim3 << "_" << expId; 
 
 	SightInit(argc, argv, "MATRIX_MULTIPLY",txt()<< outDir.str());
+        
+	double vm1, rss1,vm2,rss2,rssUsage,vmUsage;
+	process_mem_usage(vm1, rss1);
 
 	Matrix A(dim1, dim2), B(dim2, dim3), C(dim1, dim3);
 	srand(86456);
@@ -61,12 +66,11 @@ int main(int argc, char* argv[])
 			B(i, j) = rand()/maxr;
 	Timing mul;
        {
-	module multiplyModule(instance("multiply", 1, 0),
+	module multiplyModule(instance("multiply", 1, 1),
                      inputs(port(context("dim1",  dim1,  sight::common::module::notes(sight::common::module::publicized()),
                                          "dim2", dim2, sight::common::module::notes(sight::common::module::publicized()),
                                          "dim3", dim3, sight::common::module::notes(sight::common::module::publicized())))),
                      getMeasures() );
-       
 	for (int j = 0; j < dim3; j++)
 	{
 		for (int i = 0; i < dim1; i++)
@@ -75,6 +79,10 @@ int main(int argc, char* argv[])
 			for (int i = 0; i < dim1; i++)
 				C(i, j) += A(i, k)*B(k, j);
 	}
+	process_mem_usage(vm2, rss2);
+	rssUsage = rss2 - rss1;
+	vmUsage = vm2 - vm1;
+	multiplyModule.setOutCtxt(0, context("rssUsage", rssUsage, "vmUsage", vmUsage));
        }
 	double time = mul.time();
 	cout << "time for C(" << dim1 << "," << dim3 << ") = A(" << dim1 << "," << dim2 << ") B(" << dim2 << "," << dim3 << ") is " << time << " s" << endl;	

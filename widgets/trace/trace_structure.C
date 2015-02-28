@@ -1147,6 +1147,14 @@ void PAPIMeasure::init() {
           rawEvents.insert(PAPI_L3_ICA);
           rawEvents.insert(PAPI_L3_ICM);
           break;
+        case PAPI_MIPS: // MIPS
+          rawEvents.insert(PAPI_FP_INS);
+          rawEvents.insert(PAPI_TOT_CYC);
+          break;
+        case PAPI_MFLOPS: // MFLOPS
+          rawEvents.insert(PAPI_FP_INS);
+          rawEvents.insert(PAPI_TOT_CYC);
+          break;
         default:
           cerr << "ERROR: Unknown derived PAPI event "<<*e<<endl;
           assert(0);
@@ -1364,6 +1372,16 @@ std::list<std::pair<std::string, attrValue> > PAPIMeasure::getAccumValues() {
           ret.push_back(make_pair("PAPI_L3_IC_MR", attrValue(accumValues[events2Idx[PAPI_L3_ICA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L3_ICM]])/
                                                                    accumValues[events2Idx[PAPI_L3_ICA]])));
+          break;
+	case PAPI_MIPS: //MIPS(CPU cycles)
+          ret.push_back(make_pair("PAPI_MIPS", attrValue(accumValues[events2Idx[PAPI_TOT_CYC]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_TOT_INS]])/
+                                                                   accumValues[events2Idx[PAPI_TOT_CYC]])));
+          break;
+	case PAPI_MFLOPS: //MFLOPS (CPU cycles)
+          ret.push_back(make_pair("PAPI_MFLOPS", attrValue(accumValues[events2Idx[PAPI_TOT_CYC]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_FP_INS]])/
+                                                                   accumValues[events2Idx[PAPI_TOT_CYC]])));
           break;
         default:
           cerr << "ERROR: Unknown derived PAPI event "<<*e<<endl;

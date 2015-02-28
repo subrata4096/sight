@@ -14,6 +14,8 @@
 #include "utils.h"
 #include <sys/stat.h>
 
+#include <ios>
+
 using namespace std;
 
 namespace sight {
@@ -183,6 +185,50 @@ int mkpath(std::string s,mode_t mode, bool isDir)
         nextPos=s.find_first_of('/',nextPos+1);
     }
     return mdret;
+}
+
+void process_mem_usage(double& vm_usage, double& resident_set)
+{
+   using std::ios_base;
+   using std::ifstream;
+   using std::string;
+
+   vm_usage     = 0.0;
+   resident_set = 0.0;
+    // the two fields we want
+   //
+   unsigned long vsize;
+   long rss;
+
+   // 'file' stat seems to give the most reliable results
+   //
+   ifstream stat_stream("/proc/self/stat",ios_base::in);
+
+   // dummy vars for leading entries in stat that we don't care about
+   //
+   string pid, comm, state, ppid, pgrp, session, tty_nr;
+   string tpgid, flags, minflt, cminflt, majflt, cmajflt;
+   string utime, stime, cutime, cstime, priority, nice;
+   string O, itrealvalue, starttime;
+
+
+   stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
+               >> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
+               >> utime >> stime >> cutime >> cstime >> priority >> nice
+               >> O >> itrealvalue >> starttime >> vsize >> rss; // don't care about the rest
+
+   stat_stream.close();
+
+
+   /*
+    //This method has problem with units. so commenting out
+   ifstream stat_stream("/proc/self/statm",ios_base::in);
+   stat_stream >> vsize >> rss;
+   stat_stream.close();
+   */
+   long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
+   vm_usage     = (double)vsize / 1024.0;   //now it is KB Kilo Bytes
+   resident_set = rss * page_size_kb;  //originally was measured in Pages. After this multiplication now it is aprox in KB
 }
 
 } // namespace sight

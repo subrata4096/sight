@@ -37,6 +37,7 @@ SIGHT_LINKFLAGS = \
 
 RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
+SIGHT_CFLAGS += -DRAPL=1
 SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
