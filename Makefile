@@ -144,6 +144,8 @@ MATRIX_MULTIPLY:
 	cd apps/MATRIX_MULTIPLY; make ${MAKE_DEFINES} mm
 SPARSE_MATRIX_MUL:
 	cd apps/SPARSE_MATRIX_MUL; make ${MAKE_DEFINES} arch=P4
+LINPACK:
+	cd apps/LINPACK; make ${MAKE_DEFINES} linpack
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)

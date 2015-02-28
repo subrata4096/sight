@@ -4,8 +4,29 @@
 # include <cmath>
 # include <ctime>
 # include <cstdio>
-
+#include "sight.h"
+#include "Measure_DCSL.h"
+#include <sstream>
+using namespace sight;
 using namespace std;
+
+namedMeasures getMeasures()
+{
+
+   return namedMeasures(
+#ifdef RAPL
+                              "RAPL", new RAPLMeasure()
+#else
+                              "time", new timeMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_L1_DCM,PAPI_TOT_INS,PAPI_MFLOPS))
+                              //"PAPI", new PAPIMeasure(papiEvents(PAPI_L1_DCM,PAPI_TOT_INS,PAPI_MIPS))
+                              //"PAPI", new PAPIMeasure(papiEvents(PAPI_L2_DC_MR))
+                              //"PAPI", new PAPIMeasure(papiEvents(PAPI_LD_INS))
+#endif
+                             );
+
+}
+
 
 //int main (int argc, char* argv[]);
 double cpu_time ( void );
@@ -90,7 +111,19 @@ int main (int argc, char* argv[])
   cout << "  Matrix order N               = " << N << "\n";
   cout << "  Leading matrix dimension LDA = " << LDA << "\n";
 
+
+  char* expId = "-1"; if(getenv("EXP_ID")) expId = getenv("EXP_ID");
+
+  stringstream outDir;
+  outDir << "dbg.LINPACK_" << N << "_" << expId;
+  SightInit(argc, argv, "LINPACK",txt()<< outDir.str());
+
+
   ops = ( float ) ( 2 * N * N * N ) / 3.0 + 2.0 * ( float ) ( N * N );
+
+
+  double vm1, rss1,vm2,rss2,rssUsage,vmUsage;
+  process_mem_usage(vm1, rss1);
 //
 //  Allocate space for arrays.
 //
@@ -124,8 +157,15 @@ int main (int argc, char* argv[])
     }
   }
   t1 = cpu_time ( );
+  {
+  module totalModule(instance("total", 1, 1),
+                     inputs(port(context("N",  N,  sight::common::module::notes(sight::common::module::publicized()),
+                                         "ops", ops, sight::common::module::notes(sight::common::module::publicized())))), namedMeasures("time", new timeMeasure()) );
+  {
+    module factorModule(instance("factor", 0, 0), getMeasures());
 
-  info = sgefa ( a, LDA, N, ipvt );
+   info = sgefa ( a, LDA, N, ipvt );
+  } //end factorModule 
 
   if ( info != 0 )
   {
@@ -142,12 +182,24 @@ int main (int argc, char* argv[])
   t1 = cpu_time ( );
 
   job = 0;
-  sgesl ( a, LDA, N, ipvt, b, job );
+  {
+    module solveModule(instance("solve", 0, 0),getMeasures() );
+
+    sgesl ( a, LDA, N, ipvt, b, job );
+
+  } //end solveModule
 
   t2 = cpu_time ( );
   time[1] = t2 - t1;
 
   total = time[0] + time[1];
+
+  process_mem_usage(vm2, rss2);
+  rssUsage = rss2 - rss1;
+  vmUsage = vm2 - vm1;
+  totalModule.setOutCtxt(0, context("rssUsage", rssUsage, "vmUsage", vmUsage));
+
+ } //end totalModule  
 
   delete [] a;
 //

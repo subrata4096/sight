@@ -1,0 +1,13 @@
+#!/bin/bash
+##### These lines are for Moab
+#MSUB -l nodes=1
+#MSUB -l walltime=03:00:00
+#MSUB -q pbatch
+#MSUB -m be
+#MSUB -V
+#MSUB -o /p/lscratchd/mitra3/my_sight_branch/sight/apps/LINPACK/out
+
+##### These are shell commands
+export NUM_PROCS=1
+cd /p/lscratchd/mitra3/my_sight_branch/sight/apps/LINPACK/
+./run_local_script.sh
