@@ -22,13 +22,16 @@ namedMeasures getMeasures()
 {
 
    return namedMeasures(
+
 #ifdef RAPL
                               "RAPL", new RAPLMeasure()
 #else
                               "time", new timeMeasure(),
-                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_DCM))
+                              "timestamp", new timeStampMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_DCM, PAPI_LD_INS))
                               //"PAPI", new PAPIMeasure(papiEvents(PAPI_LD_INS))
 #endif
+
                              );
 
 }
@@ -107,8 +110,8 @@ int main(int argc, char **argv) {
                      inputs(port(context("blockSize",  blockSize,  sight::common::module::notes(sight::common::module::publicized()),
                                          "nnz", nnz, sight::common::module::notes(sight::common::module::publicized()),
                                          "t_max", t_max, sight::common::module::notes(sight::common::module::publicized()),
-                                         "mem_max", mem_max, sight::common::module::notes(sight::common::module::publicized())))),
-                     getMeasures() );   
+                                         "mem_max", mem_max, sight::common::module::notes(sight::common::module::publicized()))))
+                    /*, getMeasures()*/ );   
   /* call "driver routines" */
   benchcheck = run_benchmark(&bench_params, 1, 1);
   } 
