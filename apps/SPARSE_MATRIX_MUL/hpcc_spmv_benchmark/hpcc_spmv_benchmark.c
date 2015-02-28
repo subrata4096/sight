@@ -467,6 +467,8 @@ int hpcc_spmv_benchmark(hpcc_spmv_params* bench_params, int write_to_files, int 
     }
   }
 
+   module moduleForOutputMFLOPS(instance("module_for_mflops_output", 1, 1),
+                     inputs(port(context("probDimension",  bench_params->maxdim,  sight::common::module::notes(sight::common::module::publicized())))), getMeasures() );
   /* later on: organize data to make "comprehensive" graph */
 
   /* get median mflop numbers for both unblocked and blocked cases
@@ -474,6 +476,8 @@ int hpcc_spmv_benchmark(hpcc_spmv_params* bench_params, int write_to_files, int 
      during the benchmark runs) */
   unblocked_mflop_median = median(mflop_rates, num_unblocked_runs);
   blocked_mflop_median = median(mflop_rates + num_unblocked_runs, max_blocked_runs);
+
+  moduleForOutputMFLOPS.setOutCtxt(0, context("unblocked_mflop_max", unblocked_mflop_max, "blocked_mflop_median", blocked_mflop_median));
 
   /* output the magic four numbers */
   if (text_output) {
