@@ -22,27 +22,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if 0
 #include "sight.h"
+#include <sstream>
 #include "Measure_DCSL.h"
 using namespace sight;
-
 using namespace::std;
-namedMeasures getMeasures()
-{
-
-   return namedMeasures(
-#ifdef RAPL
-                              "RAPL", new RAPLMeasure()
-#else
-                              "time", new timeMeasure(),
-                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_DCM))
-                              //"PAPI", new PAPIMeasure(papiEvents(PAPI_LD_INS))
-#endif
-                             );
-
-}
-#endif
 /****************************
  * median
  * 
@@ -297,7 +281,10 @@ int hpcc_spmv_benchmark(hpcc_spmv_params* bench_params, int write_to_files, int 
 
   /* determine timer granularity */
   timergranularity = find_timer_granularity(&dummy);
-
+  {
+  module coreSPMVModule(instance("core_spmv", 1, 0),
+                     inputs(port(context("probDimension",  bench_params->maxdim,  sight::common::module::notes(sight::common::module::publicized())))),
+                     getMeasures() );
   /* print runtime estimate */
   if (text_output) {
     printf("estimated runtime = %d minutes\n", bench_params->est_runtime);
@@ -305,7 +292,7 @@ int hpcc_spmv_benchmark(hpcc_spmv_params* bench_params, int write_to_files, int 
   }
 
   time1 = get_seconds();
-
+  
   for (r = 0; r < bench_params->n_row_blockdims; r++) {
     for (c = 0; c < bench_params->n_col_blockdims; c++) {
       r_curr = bench_params->row_blockdims[r];
@@ -400,7 +387,7 @@ int hpcc_spmv_benchmark(hpcc_spmv_params* bench_params, int write_to_files, int 
 
   time2 = get_seconds();
   bench_params->actual_runtime = time2 - time1;
-
+  }
   /* fill in tests that weren't done using interpolation and write
      resulting data to output file */
   bigidx = 0;

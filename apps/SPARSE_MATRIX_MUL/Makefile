@@ -4,7 +4,7 @@
 ##########################################################################
 
 
-LIBS += -L../../.. -lsight_structure ${SIGHT_LINKFLAGS}
+LIBS += -L../.. -lsight_structure ${SIGHT_LINKFLAGS}
 
 arch = UNKNOWN
 include makes/Make.$(arch)

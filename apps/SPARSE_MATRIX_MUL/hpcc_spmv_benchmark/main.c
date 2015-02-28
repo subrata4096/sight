@@ -12,8 +12,27 @@
 #include <smvm_util.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include "sight.h"
+#include "sight.h"
 #include <sstream>
+#include "Measure_DCSL.h"
+using namespace sight;
+using namespace::std;
+
+namedMeasures getMeasures()
+{
+
+   return namedMeasures(
+#ifdef RAPL
+                              "RAPL", new RAPLMeasure()
+#else
+                              "time", new timeMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_DCM))
+                              //"PAPI", new PAPIMeasure(papiEvents(PAPI_LD_INS))
+#endif
+                             );
+
+}
+
 int main(int argc, char **argv) {
   int benchcheck, t_max, mem_max;
   //int rowdims[] = {1,2,3,4,6,8}, coldims[] = {1,2,3,4,6,8};
@@ -54,9 +73,12 @@ int main(int argc, char **argv) {
   }
 
    int expId = -1; if(getenv("EXP_ID")) expId = atoi(getenv("EXP_ID"));
-   int blockSize = -1; if(getenv("BLOCK_SIZE")) blockSize = atoi(getenv("BLOCK_SIZE"));
-   int nnz = -1; if(getenv("NNZ")) nnz = atoi(getenv("NNZ"));
-   printf("newwww nnz=%d , blockSize=%d\n",nnz,blockSize);
+   int blockSize = 8; if(getenv("BLOCK_SIZE")) blockSize = atoi(getenv("BLOCK_SIZE"));
+   int nnz = 25; if(getenv("NNZ")) nnz = atoi(getenv("NNZ"));
+   printf("new nnz=%d , blockSize=%d\n",nnz,blockSize);
+   stringstream outDir;
+   outDir << "dbg.SPARSE_MATRIX_MUL_" << blockSize << "_" << nnz << "_" << t_max << "_" << mem_max << "_" << expId;
+   SightInit(argc, argv, "MATRIX_MULTIPLY",txt()<< outDir.str());
    //int blockSize = 8;
    //int nnz = 9;
    rowdims[0] = blockSize;
@@ -80,10 +102,16 @@ int main(int argc, char **argv) {
   bench_params.rmaxlen = 1;
   bench_params.cmaxlen = 1; 
   bench_params.interval_fracs = interval_fracs;
-  
+  {	
+  module mainBenchmarkModule(instance("mainbenchmark", 1, 0),
+                     inputs(port(context("blockSize",  blockSize,  sight::common::module::notes(sight::common::module::publicized()),
+                                         "nnz", nnz, sight::common::module::notes(sight::common::module::publicized()),
+                                         "t_max", t_max, sight::common::module::notes(sight::common::module::publicized()),
+                                         "mem_max", mem_max, sight::common::module::notes(sight::common::module::publicized())))),
+                     getMeasures() );   
   /* call "driver routines" */
   benchcheck = run_benchmark(&bench_params, 1, 1);
-   
+  } 
   /* we're done! return value returned by driver routine */
   return benchcheck;
 }
