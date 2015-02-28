@@ -45,7 +45,8 @@ endif
 SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=0
 #SIGHT_CFLAGS += -DRUNTIME_ANOMALY_DETECTION=1
 	                
-override CC=gcc
+#override CC=gcc
+override CC=g++
 override CCC=g++
 MPICC = mpicc
 MPICCC = mpic++
@@ -140,6 +141,8 @@ lulesh:
 
 MATRIX_MULTIPLY:
 	cd apps/MATRIX_MULTIPLY; make ${MAKE_DEFINES} mm
+SPARSE_MATRIX_MUL:
+	cd apps/SPARSE_MATRIX_MUL; make ${MAKE_DEFINES} arch=P4
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)

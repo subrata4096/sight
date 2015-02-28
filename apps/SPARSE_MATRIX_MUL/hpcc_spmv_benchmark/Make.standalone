@@ -4,15 +4,15 @@
 # 
 # Makefile for matrix generator library, and tester executable.
 ##########################################################################
-#LIBS += -L../.. -lsight_structure ${SIGHT_LINKFLAGS}
+LIBS += -L../../../.. -lsight_structure ${SIGHT_LINKFLAGS}
 arch = UNKNOWN
 include ../makes/Make.$(arch)
 CPPFLAGS = -I../spmvbench -I../matrix_generator -I../sparse_matrix_converter -I../bebop_util -I.
 BENCHLIBS = -lm -l_bsr_spmv -l_matrix_generators -lsparse_matrix_converter -lbebop_util
 LDFLAGS = -L../bebop_util -L../sparse_matrix_converter -L../matrix_generator -L../spmvbench
 
-#CXXFLAGS += -I../../.. ${SIGHT_CFLAGS}
-#CPPFLAGS += -I../../.. ${SIGHT_CFLAGS}
+CXXFLAGS += -I../../../.. ${SIGHT_CFLAGS}
+CPPFLAGS += -I../../../.. ${SIGHT_CFLAGS}
 
 THEBENCH = hpcc_spmv_benchmark
 BENCHOBJ = benchmark_subset.o hpcc_spmv_benchmark.o main.o

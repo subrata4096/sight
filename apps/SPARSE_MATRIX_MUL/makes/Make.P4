@@ -5,6 +5,8 @@
 CD           = cd
 RM           = /bin/rm -f
 
+#include /p/lscratchd/mitra3/my_sight_branch/sight/Makefile.extern
+
 # We're on this platform
 ARCH         = $(arch)
 

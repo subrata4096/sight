@@ -7,10 +7,10 @@
 
 arch = UNKNOWN
 include ../makes/Make.$(arch)
-
 #
 # For the "utility library," to be shared between projects.
 # 
+CC = g++
 CPPFLAGS = -I.
 LIBUTILOBJ = __complex.o avltree_intpair.o get_options.o merge_sort.o \
 	     mt19937ar.o random_number.o smvm_malloc.o smvm_util.o \
