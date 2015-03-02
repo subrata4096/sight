@@ -1088,7 +1088,7 @@ module::~module() {
 
     //subrata: register runtimeRegression
 
-     cout << "++++++++++++++++++++++  " << g.getStackName("/") << endl;
+     //cout << "++++++++++++++++++++++  " << g.getStackName("/") << endl;
      std::string fullStackName = g.getStackName("/");
      traceStream* thisTraceStream = modularApp::moduleTrace[g];
      int tId = thisTraceStream->getTraceID();
