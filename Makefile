@@ -146,6 +146,10 @@ SPARSE_MATRIX_MUL:
 	cd apps/SPARSE_MATRIX_MUL; make ${MAKE_DEFINES} arch=P4
 LINPACK:
 	cd apps/LINPACK; make ${MAKE_DEFINES} linpack
+BLACKSCHOLES:
+	cd apps/BLACKSCHOLES/src; make ${MAKE_DEFINES}
+BLACKSCHOLES_OMP:
+	cd apps/BLACKSCHOLES/src; make ${MAKE_DEFINES} version=openmp
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)
