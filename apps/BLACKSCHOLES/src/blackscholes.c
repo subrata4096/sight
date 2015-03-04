@@ -68,7 +68,8 @@ namedMeasures getMeasures()
                               "RAPL", new RAPLMeasure()
 #else
                               "time", new timeMeasure(),
-                              "PAPI", new PAPIMeasure(papiEvents(PAPI_L1_DCM,PAPI_TOT_INS,PAPI_MFLOPS))
+			      "timestamp", new timeStampMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS,PAPI_MFLOPS,PAPI_FP_INS))
                               //"PAPI", new PAPIMeasure(papiEvents(PAPI_L1_DCM,PAPI_TOT_INS,PAPI_MIPS))
                               //"PAPI", new PAPIMeasure(papiEvents(PAPI_L2_DC_MR))
                               //"PAPI", new PAPIMeasure(papiEvents(PAPI_LD_INS))
