@@ -300,16 +300,20 @@ void MergeState::printStateVectors(ostream& out) const {
   
 void MergeState::printStreamRecords(ostream& out) const {
   {scope sout("outStreamRecords");
-  for(std::map<std::string, streamRecord*>::const_iterator o=outStreamRecords.begin(); o!=outStreamRecords.end(); o++)
-    out << o->first<<": "<<o->second->str("    ")<<endl;
-  }
+  for(std::map<std::string, streamRecord*>::const_iterator o=outStreamRecords.begin(); o!=outStreamRecords.end(); o++) {
+    scope s(o->first, scope::low);
+    out << o->second->str("    ")<<endl;
+  }}
   
   {scope sin("inStreamRecords");
   int idx=0;
-  for(std::vector<std::map<std::string, streamRecord*> >::const_iterator i=inStreamRecords.begin(); i!=inStreamRecords.end(); i++, idx++)
-    for(std::map<std::string, streamRecord*>::const_iterator j=i->begin(); j!=i->end(); j++)
-      out << idx<<": "<<j->first<<": "<<j->second->str("    ")<<endl;
-  }
+  for(std::vector<std::map<std::string, streamRecord*> >::const_iterator i=inStreamRecords.begin(); i!=inStreamRecords.end(); i++, idx++) {
+    scope sin2(txt()<<"Instream "<<idx, scope::medium);
+    for(std::map<std::string, streamRecord*>::const_iterator j=i->begin(); j!=i->end(); j++) {
+      scope sin3(j->first, scope::low);
+      out << j->second->str("    ")<<endl;
+    }
+  } }
 }
 
 void MergeState::printTags(ostream& out) const {
@@ -902,8 +906,12 @@ void MergeState::merge() {
            getNumGroups()>1 || getCommonGroupStreams().parserIndexes.size()>1) {
           ITER_ACTION("Processing interleaving tags on multiple streams");
           for(map<tagGroup, groupStreams>::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ) {
-            if(ts->first.info.getMergeKind()==MergeInfo::interleave) {
+            /*scope s("tagGroup");
+            dbg << ts->first.str()<<endl;
+            dbg << "ts->first.type==properties::enterTag="<<(ts->first.type==properties::enterTag)<<endl;*/
+            if(ts->first.type==properties::enterTag && ts->first.info.getMergeKind()==MergeInfo::interleave) {
               for(list<int>::iterator p=ts->second.parserIndexes.begin(); p!=ts->second.parserIndexes.end(); p++) {
+                scope s(txt()<<"parser "<<*p);
                 MergeState groupState(*this, ts->first, groupStreams(*p), 0, /*readyForNewTags*/ false, /*createNewOutStreamRecords*/ false
                                       #ifdef VERBOSE
                                       , curIterA 
@@ -917,7 +925,7 @@ void MergeState::merge() {
               map<tagGroup, groupStreams>::iterator ts2=ts;
               ++ts;
               readyForNextTag(ts2->first, ts2->second);
-            } else if(ts->first.info.getMergeKind()==MergeInfo::interleave_aligned) {
+            } else if(ts->first.type==properties::enterTag && ts->first.info.getMergeKind()==MergeInfo::interleave_aligned) {
 //              map<tagGroup, groupStreams> filtered;
 //              filtered[ts->first] = ts->second;
 //              mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/ true
